@@ -38,7 +38,7 @@ export const CONFIG = {
     ENABLE_ANALYTICS: !__DEV__,
     ENABLE_CRASH_REPORTING: !__DEV__,
     ENABLE_PERFORMANCE_MONITORING: !__DEV__,
-    USE_MOCK_DATA: __DEV__ && !process.env.EXPO_PUBLIC_USE_REAL_APIS,
+    USE_MOCK_DATA: false, // Disabled mock data - always use real APIs
     ENABLE_OFFLINE_MODE: true,
     ENABLE_BIOMETRIC_AUTH: true,
     ENABLE_PUSH_NOTIFICATIONS: true,

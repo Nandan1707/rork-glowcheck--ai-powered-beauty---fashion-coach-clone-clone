@@ -153,8 +153,8 @@ class AIService {
       try {
         logger.info('Starting S3 upload', { fileName, imageUri: imageUri.substring(0, 50) + '...' });
         
-        if (CONFIG.FEATURES.USE_MOCK_DATA || !CONFIG.AWS.S3_BUCKET_NAME) {
-          logger.debug('Using mock S3 upload');
+        if (!CONFIG.AWS.S3_BUCKET_NAME) {
+          logger.debug('S3 not configured, using local image URI');
           return imageUri;
         }
         
@@ -179,9 +179,8 @@ class AIService {
       // Convert image to base64 for Google Vision API
       const base64Image = await this.convertImageToBase64(imageUri);
       
-      if (CONFIG.FEATURES.USE_MOCK_DATA || !CONFIG.AI.GOOGLE_VISION_API_KEY) {
-        logger.debug('Using mock Vision API data');
-        return this.getMockVisionData();
+      if (!CONFIG.AI.GOOGLE_VISION_API_KEY) {
+        throw new Error('Google Vision API key not configured');
       }
       
       const response = await fetch(
@@ -219,8 +218,8 @@ class AIService {
         `https://vision.googleapis.com/v1/images:annotate`,
         'POST'
       );
-      logger.warn('Vision API failed, using mock data', error as Error);
-      return this.getMockVisionData();
+      logger.error('Vision API failed', error as Error);
+      throw error;
     }
   }
 
@@ -260,34 +259,7 @@ class AIService {
     }
   }
 
-  private getMockVisionData() {
-    return {
-      responses: [
-        {
-          faceAnnotations: [
-            {
-              boundingPoly: { vertices: [{ x: 100, y: 100 }, { x: 200, y: 200 }] },
-              fdBoundingPoly: { vertices: [{ x: 105, y: 105 }, { x: 195, y: 195 }] },
-              landmarks: [],
-              rollAngle: 0.5,
-              panAngle: 1.2,
-              tiltAngle: -0.8,
-              detectionConfidence: 0.95,
-              landmarkingConfidence: 0.87,
-            },
-          ],
-          imagePropertiesAnnotation: {
-            dominantColors: {
-              colors: [
-                { color: { red: 220, green: 180, blue: 160 }, score: 0.4 },
-                { color: { red: 200, green: 150, blue: 130 }, score: 0.3 },
-              ],
-            },
-          },
-        },
-      ],
-    };
-  }
+
 
   async analyzeGlow(imageUri: string): Promise<GlowAnalysisResult> {
     try {
@@ -329,9 +301,8 @@ class AIService {
       );
       logger.warn('Glow analysis failed, using consistent mock data', error as Error);
       
-      // Generate fingerprint for consistent mock data
-      const fingerprint = await this.generateImageFingerprint(imageUri).catch(() => this.hashString(imageUri));
-      return this.getMockGlowAnalysis(fingerprint);
+      // Re-throw the error instead of using mock data
+      throw error;
     }
   }
 
@@ -421,8 +392,8 @@ class AIService {
         `${CONFIG.AI.RORK_AI_BASE_URL}/text/llm/`,
         'POST'
       );
-      logger.warn('AI glow analysis failed, using consistent mock data', error as Error);
-      return this.getMockGlowAnalysis(fingerprint);
+      logger.error('AI glow analysis failed', error as Error);
+      throw error;
     }
   }
 
@@ -490,77 +461,12 @@ class AIService {
       
       throw new Error('Invalid AI response format');
     } catch (error) {
-      logger.warn('Failed to parse AI glow analysis response', { error: error instanceof Error ? error.message : 'Unknown error' });
-      return this.getMockGlowAnalysis(consistentAnalysis ? this.hashString(JSON.stringify(consistentAnalysis)) : undefined);
+      logger.error('Failed to parse AI glow analysis response', { error: error instanceof Error ? error.message : 'Unknown error' });
+      throw new Error('Invalid AI response format: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
   }
 
-  private getMockGlowAnalysis(fingerprint?: string): GlowAnalysisResult {
-    let consistentAnalysis: Partial<GlowAnalysisResult>;
-    
-    if (fingerprint) {
-      // Generate consistent analysis based on fingerprint
-      consistentAnalysis = this.generateConsistentAnalysis(fingerprint);
-    } else {
-      // Fallback to random but still reasonable values
-      const overallScore = Math.floor(Math.random() * 30) + 70; // 70-100
-      const skinTones = ['Warm Beige', 'Cool Ivory', 'Olive Medium', 'Deep Caramel', 'Golden Tan', 'Porcelain Fair'];
-      const skinTypes = ['Normal', 'Dry', 'Oily', 'Combination', 'Sensitive'];
-      const potentials = ['High', 'Medium', 'Low'];
-      const qualities = ['Excellent', 'Good', 'Fair', 'Needs Improvement'];
-      
-      consistentAnalysis = {
-        overallScore,
-        skinPotential: potentials[Math.floor(Math.random() * potentials.length)],
-        skinQuality: qualities[Math.floor(Math.random() * qualities.length)],
-        jawlineScore: Math.floor(Math.random() * 25) + 70, // 70-95
-        skinTone: skinTones[Math.floor(Math.random() * skinTones.length)],
-        skinType: skinTypes[Math.floor(Math.random() * skinTypes.length)],
-        brightness: Math.floor(Math.random() * 30) + 65, // 65-95
-        hydration: Math.floor(Math.random() * 40) + 55, // 55-95
-        symmetryScore: Math.floor(Math.random() * 20) + 75, // 75-95
-      };
-    }
-    
-    const aiTips = [
-      'Hydrate twice daily with hyaluronic acid serum for plumper skin',
-      'Use sunscreen every morning to prevent premature aging',
-      'Add more Omega-3s to your diet for improved skin elasticity',
-      'Try facial massage for 5 minutes daily to boost circulation',
-      'Get 7-8 hours of quality sleep for optimal skin recovery',
-    ];
-    
-    const improvements = [
-      'Increase daily water intake to 8-10 glasses for better hydration',
-      'Incorporate vitamin C serum in morning routine for brighter skin',
-      'Use a gentle exfoliant 2x per week to improve texture',
-      'Apply a hydrating face mask weekly for deep moisture',
-    ];
-    
-    const recommendations = [
-      'Morning: Gentle cleanser → Vitamin C serum → Moisturizer → SPF 30+',
-      'Evening: Double cleanse → Retinol (2x/week) → Hydrating serum → Night cream',
-      'Weekly: Gentle exfoliation + Deep hydrating mask',
-      'Monthly: Professional facial or at-home enzyme treatment',
-    ];
-    
-    return {
-      overallScore: consistentAnalysis.overallScore!,
-      skinPotential: consistentAnalysis.skinPotential!,
-      skinQuality: consistentAnalysis.skinQuality!,
-      jawlineScore: consistentAnalysis.jawlineScore!,
-      skinTone: consistentAnalysis.skinTone!,
-      skinType: consistentAnalysis.skinType!,
-      brightness: consistentAnalysis.brightness!,
-      hydration: consistentAnalysis.hydration!,
-      symmetryScore: consistentAnalysis.symmetryScore!,
-      glowScore: consistentAnalysis.overallScore!, // Backward compatibility
-      improvements,
-      recommendations,
-      tips: aiTips.slice(0, 3), // Use first 3 AI tips for compatibility
-      aiTips,
-    };
-  }
+
 
   async analyzeOutfit(imageUri: string, eventType: string): Promise<OutfitAnalysisResult> {
     try {
@@ -589,8 +495,8 @@ class AIService {
         'analyzeOutfit',
         { imageUri: imageUri.substring(0, 50) + '...', eventType }
       );
-      logger.warn('Outfit analysis failed, using mock data', error as Error);
-      return this.getMockOutfitAnalysis();
+      logger.error('Outfit analysis failed', error as Error);
+      throw error;
     }
   }
 
@@ -634,8 +540,8 @@ class AIService {
         `${CONFIG.AI.RORK_AI_BASE_URL}/text/llm/`,
         'POST'
       );
-      logger.warn('AI outfit analysis failed, using mock data', error as Error);
-      return this.getMockOutfitAnalysis();
+      logger.error('AI outfit analysis failed', error as Error);
+      throw error;
     }
   }
 
@@ -659,33 +565,12 @@ class AIService {
       
       throw new Error('Invalid AI response format');
     } catch (error) {
-      logger.warn('Failed to parse AI outfit analysis response', { error: error instanceof Error ? error.message : 'Unknown error' });
-      return this.getMockOutfitAnalysis();
+      logger.error('Failed to parse AI outfit analysis response', { error: error instanceof Error ? error.message : 'Unknown error' });
+      throw new Error('Invalid AI response format: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
   }
 
-  private getMockOutfitAnalysis(): OutfitAnalysisResult {
-    return {
-      outfitScore: Math.floor(Math.random() * 30) + 70, // 70-100
-      colorMatchScore: Math.floor(Math.random() * 30) + 70,
-      styleScore: Math.floor(Math.random() * 30) + 70,
-      compatibleColors: [
-        '#FF6B98', // Pink
-        '#9D71E8', // Purple
-        '#4CAF50', // Green
-        '#2196F3', // Blue
-        '#FFD166', // Gold
-      ],
-      tips: [
-        'Try adding a statement accessory to elevate this look',
-        'This color palette works well with your skin tone',
-        'Consider a different shoe style for better proportion',
-        'A structured blazer would add sophistication',
-      ],
-      eventAppropriate: Math.random() > 0.3,
-      seasonalMatch: Math.random() > 0.2,
-    };
-  }
+
 
   async generateCoachingPlan(goal: string, currentGlowScore: number): Promise<CoachingPlan> {
     try {
@@ -715,8 +600,8 @@ class AIService {
         `${CONFIG.AI.RORK_AI_BASE_URL}/text/llm/`,
         'POST'
       );
-      logger.warn('Coaching plan generation failed, using mock data', error as Error);
-      return this.getMockCoachingPlan(goal);
+      logger.error('Coaching plan generation failed', error as Error);
+      throw error;
     }
   }
 
@@ -738,75 +623,12 @@ class AIService {
       
       throw new Error('Invalid AI response format');
     } catch (error) {
-      logger.warn('Failed to parse AI coaching plan response', { error: error instanceof Error ? error.message : 'Unknown error' });
-      return this.getMockCoachingPlan(goal);
+      logger.error('Failed to parse AI coaching plan response', { error: error instanceof Error ? error.message : 'Unknown error' });
+      throw new Error('Invalid AI response format: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
   }
 
-  private getMockCoachingPlan(goal: string): CoachingPlan {
-    const tasks: DailyTask[] = [];
-    
-    for (let day = 1; day <= 30; day++) {
-      const dailyTasks = [
-        {
-          id: `task-${day}-1`,
-          day,
-          title: 'Morning Skincare Routine',
-          description: 'Complete your morning skincare routine with cleanser, serum, and SPF',
-          type: 'skincare' as TaskType,
-          completed: false,
-        },
-        {
-          id: `task-${day}-2`,
-          day,
-          title: 'Hydration Goal',
-          description: 'Drink at least 8 glasses of water throughout the day',
-          type: 'hydration' as TaskType,
-          completed: false,
-        },
-        {
-          id: `task-${day}-3`,
-          day,
-          title: 'Beauty Sleep',
-          description: 'Get 7-8 hours of quality sleep for skin recovery',
-          type: 'sleep' as TaskType,
-          completed: false,
-        },
-      ];
-      
-      if (day % 3 === 0) {
-        dailyTasks.push({
-          id: `task-${day}-4`,
-          day,
-          title: 'Light Exercise',
-          description: '20 minutes of light exercise to boost circulation',
-          type: 'exercise' as TaskType,
-          completed: false,
-        });
-      }
-      
-      tasks.push(...dailyTasks);
-    }
 
-    return {
-      id: `plan-${Date.now()}`,
-      goal,
-      duration: 30,
-      dailyTasks: tasks,
-      tips: [
-        'Consistency is key - stick to your routine daily',
-        'Take progress photos weekly to track improvements',
-        'Listen to your skin and adjust products if needed',
-        'Stay hydrated and eat a balanced diet',
-      ],
-      expectedResults: [
-        'Improved skin texture and hydration',
-        'More even skin tone',
-        'Reduced appearance of fine lines',
-        'Overall healthier, glowing complexion',
-      ],
-    };
-  }
 
   async generateImage(prompt: string, size: string = '1024x1024'): Promise<{ image: { base64Data: string; mimeType: string }; size: string }> {
     try {

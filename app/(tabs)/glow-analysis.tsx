@@ -187,41 +187,16 @@ export default function GlowAnalysisScreen() {
       }, 1500);
     } catch (error) {
       console.error('Error analyzing image:', error);
-      // Fallback to mock data if AI service fails
-      const improvements = [
-        'Increase your water intake to improve skin hydration.',
-        'Use a vitamin C serum in the morning for brighter skin.',
-        'Apply sunscreen daily to protect your skin from UV damage.',
-      ];
       
-      const mockResult: GlowAnalysisResult = {
-        overallScore: Math.floor(Math.random() * 30) + 70,
-        skinPotential: 'Medium',
-        skinQuality: 'Good',
-        jawlineScore: Math.floor(Math.random() * 25) + 70,
-        skinTone: 'Medium',
-        skinType: 'Normal',
-        brightness: Math.floor(Math.random() * 30) + 70,
-        hydration: Math.floor(Math.random() * 30) + 70,
-        symmetryScore: Math.floor(Math.random() * 30) + 70,
-        glowScore: Math.floor(Math.random() * 30) + 70, // Backward compatibility
-        improvements,
-        tips: improvements,
-        aiTips: improvements,
-        recommendations: [
-          'Morning: Gentle cleanser + Vitamin C serum + Moisturizer + SPF',
-          'Evening: Double cleanse + Retinol (2x/week) + Hydrating serum + Night cream',
-        ],
-      };
-      setAnalysisResult({
-        ...mockResult,
-        tips: mockResult.aiTips || mockResult.tips || mockResult.improvements,
-      });
-      
-      // Show recommendations after analysis
-      setTimeout(() => {
-        setShowRecommendations(true);
-      }, 1500);
+      // Show user-friendly error message
+      Alert.alert(
+        'Analysis Failed',
+        'Unable to analyze your image. Please check your internet connection and try again.',
+        [
+          { text: 'Try Again', onPress: () => analyzeImage(imageUri) },
+          { text: 'Cancel', onPress: resetAnalysis, style: 'cancel' }
+        ]
+      );
     } finally {
       setAnalyzing(false);
       setAnalysisProgress(0);
