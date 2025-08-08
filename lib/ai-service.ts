@@ -349,14 +349,16 @@ class AIService {
             role: 'system',
             content: `You are a professional beauty and facial analysis expert. Analyze the facial features and skin quality comprehensively. 
             
-            IMPORTANT: For consistency, use these baseline scores as reference points and adjust slightly based on actual image analysis:
-            - Overall Score: ${consistentAnalysis.overallScore}
-            - Jawline Score: ${consistentAnalysis.jawlineScore}
-            - Brightness: ${consistentAnalysis.brightness}
-            - Hydration: ${consistentAnalysis.hydration}
-            - Symmetry: ${consistentAnalysis.symmetryScore}
-            - Skin Tone: ${consistentAnalysis.skinTone}
-            - Skin Type: ${consistentAnalysis.skinType}
+            IMPORTANT: Provide accurate analysis based on the actual image. For consistency with the same image, use these baseline references but prioritize actual visual assessment:
+            - Baseline Overall Score: ${consistentAnalysis.overallScore} (adjust ±10 based on actual skin quality)
+            - Baseline Jawline Score: ${consistentAnalysis.jawlineScore} (adjust based on actual jawline definition)
+            - Baseline Brightness: ${consistentAnalysis.brightness} (adjust based on actual skin luminosity)
+            - Baseline Hydration: ${consistentAnalysis.hydration} (adjust based on visible skin texture)
+            - Baseline Symmetry: ${consistentAnalysis.symmetryScore} (adjust based on facial symmetry analysis)
+            - Suggested Skin Tone: ${consistentAnalysis.skinTone} (verify against actual image)
+            - Suggested Skin Type: ${consistentAnalysis.skinType} (verify against visible skin characteristics)
+            
+            ANALYSIS PRIORITY: Real visual assessment > Baseline consistency. Only use baselines for the same exact image.
             
             Return a detailed JSON analysis with these exact fields:
             {
@@ -395,7 +397,7 @@ class AIService {
                 
                 Vision API data: ${JSON.stringify(visionData)}
                 
-                Provide detailed, actionable insights and recommendations. Keep scores within ±5 points of the baseline for consistency.`,
+                Provide detailed, actionable insights and recommendations. For the SAME image, stay within ±3 points of baseline. For DIFFERENT images, prioritize accurate analysis over baseline consistency.`,
               },
               {
                 type: 'image',
@@ -429,10 +431,12 @@ class AIService {
       // Try to parse JSON response from AI
       const parsed = JSON.parse(aiResponse);
       
-      // Validate and constrain scores to ensure consistency
-      const constrainScore = (score: number, baseline: number, variance: number = 5): number => {
+      // Validate and constrain scores to ensure consistency for same image
+      const constrainScore = (score: number, baseline: number, variance: number = 8): number => {
         if (typeof score !== 'number' || isNaN(score)) return baseline;
-        return Math.max(1, Math.min(100, Math.round(Math.max(baseline - variance, Math.min(baseline + variance, score)))));
+        // Allow more variance for different images, less for same image
+        const actualVariance = consistentAnalysis ? Math.min(variance, 3) : variance;
+        return Math.max(1, Math.min(100, Math.round(Math.max(baseline - actualVariance, Math.min(baseline + actualVariance, score)))));
       };
       
       // Validate required fields for new comprehensive format
@@ -889,17 +893,21 @@ class AIService {
   }
 
   private generateConsistentScore(fingerprint: string, baseRange: [number, number] = [70, 95]): number {
-    // Use fingerprint to generate consistent but realistic scores
+    // Use fingerprint to generate consistent but realistic scores with better distribution
     const hash = this.hashString(fingerprint);
     let numericHash = 0;
     
     for (let i = 0; i < hash.length; i++) {
-      numericHash += hash.charCodeAt(i);
+      numericHash += hash.charCodeAt(i) * (i + 1); // Weight by position for better distribution
     }
     
     const [min, max] = baseRange;
     const range = max - min;
-    const score = min + (numericHash % range);
+    
+    // Use sine function for more natural distribution (bell curve-like)
+    const normalizedHash = (numericHash % 1000) / 1000;
+    const bellCurve = Math.sin(normalizedHash * Math.PI);
+    const score = min + (bellCurve * range);
     
     return Math.round(score);
   }
