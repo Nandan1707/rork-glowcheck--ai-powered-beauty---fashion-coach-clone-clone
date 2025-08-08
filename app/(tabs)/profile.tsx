@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   scrollContent: {
-    paddingBottom: 24,
+    paddingBottom: 16,
     flexGrow: 1,
   },
   headerButton: {
@@ -192,27 +192,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 20,
+    paddingVertical: 16,
   },
   profileImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    marginRight: 20,
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    marginRight: 16,
   },
   profileInfo: {
     flex: 1,
   },
   profileName: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
     color: COLORS.textDark,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   profileEmail: {
-    fontSize: 14,
+    fontSize: 13,
     color: COLORS.textLight,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   subscriptionBadge: {
     backgroundColor: COLORS.primary + '20',
@@ -237,10 +237,10 @@ const styles = StyleSheet.create({
   statsContainer: {
     flexDirection: 'row',
     backgroundColor: COLORS.white,
-    borderRadius: 16,
+    borderRadius: 12,
     marginHorizontal: 16,
-    marginBottom: 16,
-    padding: 16,
+    marginBottom: 12,
+    padding: 12,
     shadowColor: COLORS.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -268,13 +268,13 @@ const styles = StyleSheet.create({
   },
   upgradeCard: {
     marginHorizontal: 16,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   upgradeContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    padding: 12,
   },
   upgradeTitle: {
     fontSize: 18,
@@ -293,12 +293,12 @@ const styles = StyleSheet.create({
   },
   premiumCard: {
     marginHorizontal: 16,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   premiumContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    padding: 12,
   },
   premiumInfo: {
     flex: 1,
@@ -317,8 +317,8 @@ const styles = StyleSheet.create({
   },
   sectionHeader: {
     paddingHorizontal: 16,
-    marginBottom: 12,
-    marginTop: 8,
+    marginBottom: 8,
+    marginTop: 6,
   },
   sectionTitle: {
     fontSize: 18,
@@ -327,10 +327,10 @@ const styles = StyleSheet.create({
   },
   activityList: {
     backgroundColor: COLORS.white,
-    borderRadius: 16,
+    borderRadius: 12,
     marginHorizontal: 16,
-    marginBottom: 16,
-    padding: 8,
+    marginBottom: 12,
+    padding: 4,
     shadowColor: COLORS.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -340,17 +340,17 @@ const styles = StyleSheet.create({
   activityItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
+    padding: 10,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
   activityIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 10,
   },
   activityInfo: {
     flex: 1,
@@ -372,9 +372,9 @@ const styles = StyleSheet.create({
   },
   settingsList: {
     backgroundColor: COLORS.white,
-    borderRadius: 16,
+    borderRadius: 12,
     marginHorizontal: 16,
-    marginBottom: 16,
+    marginBottom: 12,
     shadowColor: COLORS.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -384,12 +384,12 @@ const styles = StyleSheet.create({
   settingsItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    padding: 12,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
   settingsIcon: {
-    marginRight: 16,
+    marginRight: 12,
   },
   settingsText: {
     flex: 1,
@@ -398,7 +398,7 @@ const styles = StyleSheet.create({
   },
   logoutButton: {
     marginHorizontal: 16,
-    marginBottom: 24,
+    marginBottom: 16,
   },
   crownIcon: {
     marginRight: 4,

@@ -456,49 +456,49 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   goalSelectionContainer: {
-    padding: 16,
+    padding: 12,
   },
   scanPromptContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
-    minHeight: 400,
+    padding: 16,
+    minHeight: 300,
   },
   scanPromptContent: {
     alignItems: 'center',
     maxWidth: 300,
   },
   scanPromptTitle: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: 'bold',
     color: COLORS.textDark,
     textAlign: 'center',
-    marginTop: 16,
-    marginBottom: 12,
+    marginTop: 12,
+    marginBottom: 8,
   },
   scanPromptDescription: {
-    fontSize: 16,
+    fontSize: 15,
     color: COLORS.textLight,
     textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 24,
+    lineHeight: 22,
+    marginBottom: 20,
   },
   scanPromptButton: {
     width: '100%',
   },
   activePlanContainer: {
-    padding: 16,
+    padding: 12,
   },
   activePlanCard: {
-    marginBottom: 16,
-    padding: 20,
+    marginBottom: 12,
+    padding: 16,
   },
   activePlanHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   activePlanTitleContainer: {
     flexDirection: 'row',
@@ -513,18 +513,18 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   activePlanGoal: {
-    fontSize: 16,
+    fontSize: 15,
     color: COLORS.textLight,
-    marginBottom: 16,
-    lineHeight: 22,
+    marginBottom: 12,
+    lineHeight: 20,
   },
   activePlanProgress: {
-    marginBottom: 16,
+    marginBottom: 12,
   },
   activePlanProgressLabel: {
     fontSize: 14,
     color: COLORS.textDark,
-    marginBottom: 8,
+    marginBottom: 6,
     fontWeight: '500',
   },
   activePlanProgressBar: {
@@ -535,13 +535,13 @@ const styles = StyleSheet.create({
   },
   headerContainer: {
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: 20,
   },
   titleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
-    gap: 12,
+    marginBottom: 12,
+    gap: 8,
   },
   premiumBadge: {
     flexDirection: 'row',
@@ -569,22 +569,22 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   goalCard: {
-    marginBottom: 30,
-    padding: 20,
+    marginBottom: 20,
+    padding: 16,
   },
   goalCardTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
     color: COLORS.textDark,
-    marginBottom: 20,
+    marginBottom: 16,
   },
   goalOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    marginBottom: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    marginBottom: 6,
   },
   goalOptionSelected: {
     backgroundColor: COLORS.primary + '10',
@@ -629,17 +629,17 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   planContainer: {
-    padding: 16,
+    padding: 12,
   },
   progressCard: {
-    marginBottom: 16,
-    padding: 20,
+    marginBottom: 12,
+    padding: 16,
   },
   progressHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   progressTitle: {
     fontSize: 20,
@@ -667,14 +667,14 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   todayCard: {
-    marginBottom: 16,
-    padding: 20,
+    marginBottom: 12,
+    padding: 16,
   },
   todayHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   todayTitleContainer: {
     flexDirection: 'row',
@@ -698,7 +698,7 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
   },
   todayProgressBar: {
-    marginBottom: 16,
+    marginBottom: 12,
   },
   tasksList: {
     maxHeight: 300,
@@ -706,10 +706,10 @@ const styles = StyleSheet.create({
   taskItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    marginBottom: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    marginBottom: 6,
     backgroundColor: COLORS.white,
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -719,7 +719,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.success + '30',
   },
   taskIcon: {
-    marginRight: 12,
+    marginRight: 10,
     marginTop: 2,
   },
   taskContent: {
@@ -738,8 +738,8 @@ const styles = StyleSheet.create({
   taskDescription: {
     fontSize: 14,
     color: COLORS.textLight,
-    lineHeight: 20,
-    marginBottom: 8,
+    lineHeight: 18,
+    marginBottom: 6,
   },
   taskDescriptionCompleted: {
     textDecorationLine: 'line-through',
@@ -757,13 +757,13 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   tipsCard: {
-    marginBottom: 16,
-    padding: 20,
+    marginBottom: 12,
+    padding: 16,
   },
   tipsHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   tipsTitle: {
     fontSize: 18,
@@ -774,7 +774,7 @@ const styles = StyleSheet.create({
   tipItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   tipBullet: {
     width: 24,
@@ -798,19 +798,19 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   resultsCard: {
-    marginBottom: 24,
-    padding: 20,
+    marginBottom: 16,
+    padding: 16,
   },
   resultsTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: COLORS.textDark,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   resultItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   resultText: {
     flex: 1,

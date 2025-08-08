@@ -807,15 +807,15 @@ const styles = StyleSheet.create({
   },
   progressCard: {
     marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 16,
-    padding: 20,
+    marginTop: 8,
+    marginBottom: 12,
+    padding: 16,
   },
   progressHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   progressInfo: {
     flex: 1,
@@ -862,14 +862,14 @@ const styles = StyleSheet.create({
   },
   dayNavCard: {
     marginHorizontal: 16,
-    marginBottom: 16,
-    padding: 16,
+    marginBottom: 12,
+    padding: 12,
   },
   dayNavHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   dayNavTitle: {
     fontSize: 18,
@@ -926,14 +926,14 @@ const styles = StyleSheet.create({
   },
   tasksCard: {
     marginHorizontal: 16,
-    marginBottom: 16,
-    padding: 20,
+    marginBottom: 12,
+    padding: 16,
   },
   tasksHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   tasksTitle: {
     fontSize: 20,
@@ -952,13 +952,13 @@ const styles = StyleSheet.create({
   taskItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 12,
-    paddingBottom: 12,
+    marginBottom: 8,
+    paddingBottom: 8,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
   taskCheckbox: {
-    marginRight: 16,
+    marginRight: 12,
     marginTop: 2,
   },
   taskContent: {
@@ -967,7 +967,7 @@ const styles = StyleSheet.create({
   taskHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 4,
   },
   taskTitle: {
     fontSize: 16,
@@ -982,19 +982,19 @@ const styles = StyleSheet.create({
   taskDescription: {
     fontSize: 14,
     color: Colors.textLight,
-    lineHeight: 20,
-    marginBottom: 8,
+    lineHeight: 18,
+    marginBottom: 6,
   },
   taskDescriptionCompleted: {
     textDecorationLine: 'line-through',
   },
   productSection: {
     backgroundColor: Colors.background,
-    padding: 12,
+    padding: 10,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: Colors.border,
-    marginTop: 8,
+    marginTop: 6,
   },
   productLabel: {
     fontSize: 12,
@@ -1064,14 +1064,14 @@ const styles = StyleSheet.create({
   },
   weeklyProgressCard: {
     marginHorizontal: 16,
-    marginBottom: 16,
-    padding: 20,
+    marginBottom: 12,
+    padding: 16,
   },
   weeklyProgressTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: Colors.textDark,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   weekItem: {
     marginRight: 20,
@@ -1098,8 +1098,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingBottom: 24,
-    gap: 12,
+    paddingBottom: 16,
+    gap: 8,
   },
   actionButton: {
     flex: 1,
