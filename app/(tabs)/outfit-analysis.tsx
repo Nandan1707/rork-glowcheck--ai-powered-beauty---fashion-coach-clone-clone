@@ -1,13 +1,17 @@
 import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, ActivityIndicator, Platform } from 'react-native';
 import { CameraView, CameraType } from 'expo-camera';
-import { Camera, RefreshCw, Shirt } from 'lucide-react-native';
+import { Camera, RefreshCw, Shirt, Crown, Lock } from 'lucide-react-native';
 import { Stack } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 
 import Button from '@/components/Button';
 import Card from '@/components/Card';
 import ProgressBar from '@/components/ProgressBar';
+import PremiumModal from '@/components/PremiumModal';
+import RouteGuard from '@/components/RouteGuard';
+import { useAuth } from '@/hooks/auth-store';
+import { usePremiumAccess } from '@/hooks/subscription-store';
 import { COLORS } from '@/constants/colors';
 import { aiService, OutfitAnalysisResult } from '@/lib/ai-service';
 
@@ -21,8 +25,11 @@ export default function OutfitAnalysisScreen() {
   const [analysisResult, setAnalysisResult] = useState<OutfitAnalysisResult | null>(null);
   const [cameraReady, setCameraReady] = useState(false);
   const [takingPicture, setTakingPicture] = useState(false);
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
   
   const cameraRef = useRef<any>(null);
+  const { isPremium } = useAuth();
+  const { hasPremiumAccess } = usePremiumAccess();
 
 
 
@@ -80,6 +87,12 @@ export default function OutfitAnalysisScreen() {
 
   const analyzeOutfit = async () => {
     if (!capturedImage || !eventType) return;
+    
+    // Check premium access for advanced analysis
+    if (!hasPremiumAccess) {
+      setShowPremiumModal(true);
+      return;
+    }
     
     setAnalyzing(true);
     
@@ -196,24 +209,54 @@ export default function OutfitAnalysisScreen() {
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <Stack.Screen options={{ 
-        title: 'Outfit Analysis',
-        headerTitleStyle: {
-          fontWeight: '600',
-        },
-      }} />
+    <RouteGuard requireAuth>
+      <ScrollView style={styles.container}>
+        <Stack.Screen options={{ 
+          title: 'Outfit Analysis',
+          headerTitleStyle: {
+            fontWeight: '600',
+          },
+        }} />
 
-      {!analysisResult ? (
-        <View style={styles.startContainer}>
-          <Image
-            source={{ uri: 'https://images.unsplash.com/photo-1589710751893-f9a6770ad71b?q=80&w=500&auto=format&fit=crop' }}
-            style={styles.startImage}
-          />
-          <Text style={styles.startTitle}>AI Outfit Analysis</Text>
-          <Text style={styles.startDescription}>
-            Get personalized outfit ratings and style suggestions for any occasion.
-          </Text>
+        {!hasPremiumAccess && (
+          <Card style={styles.premiumCard}>
+            <View style={styles.premiumContent}>
+              <Lock size={24} color={COLORS.accent} style={styles.premiumIcon} />
+              <View style={styles.premiumTextContainer}>
+                <Text style={styles.premiumTitle}>Premium Feature</Text>
+                <Text style={styles.premiumDescription}>
+                  Upgrade to premium to access AI-powered outfit analysis with personalized style suggestions.
+                </Text>
+              </View>
+            </View>
+            <Button
+              title="Upgrade to Premium"
+              variant="secondary"
+              style={styles.premiumButton}
+              leftIcon={<Crown size={18} color={COLORS.primary} />}
+              onPress={() => setShowPremiumModal(true)}
+            />
+          </Card>
+        )}
+
+        {!analysisResult ? (
+          <View style={styles.startContainer}>
+            <Image
+              source={{ uri: 'https://images.unsplash.com/photo-1589710751893-f9a6770ad71b?q=80&w=500&auto=format&fit=crop' }}
+              style={styles.startImage}
+            />
+            <View style={styles.titleContainer}>
+              <Text style={styles.startTitle}>AI Outfit Analysis</Text>
+              {hasPremiumAccess && (
+                <View style={styles.premiumBadge}>
+                  <Crown size={16} color={COLORS.gold} />
+                  <Text style={styles.premiumText}>Premium</Text>
+                </View>
+              )}
+            </View>
+            <Text style={styles.startDescription}>
+              Get personalized outfit ratings and style suggestions for any occasion.
+            </Text>
           
           {!capturedImage ? (
             <View style={styles.buttonContainer}>
@@ -270,11 +313,12 @@ export default function OutfitAnalysisScreen() {
               ) : (
                 <View style={styles.actionButtons}>
                   <Button
-                    title="Analyze Outfit"
+                    title={hasPremiumAccess ? "Analyze Outfit" : "Upgrade to Analyze"}
                     onPress={analyzeOutfit}
                     disabled={!eventType}
                     style={styles.analyzeButton}
                     variant="secondary"
+                    leftIcon={!hasPremiumAccess ? <Crown size={18} color={COLORS.white} /> : undefined}
                   />
                   <Button
                     title="Change Photo"
@@ -361,8 +405,18 @@ export default function OutfitAnalysisScreen() {
             />
           </View>
         </View>
-      )}
-    </ScrollView>
+        )}
+
+        <PremiumModal
+          visible={showPremiumModal}
+          onClose={() => setShowPremiumModal(false)}
+          onSuccess={() => {
+            setShowPremiumModal(false);
+            console.log('Premium upgrade successful!');
+          }}
+        />
+      </ScrollView>
+    </RouteGuard>
   );
 }
 
@@ -399,11 +453,60 @@ const styles = StyleSheet.create({
     borderRadius: 100,
     marginVertical: 20,
   },
+  titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+    gap: 12,
+  },
   startTitle: {
     fontSize: 24,
     fontWeight: 'bold',
     color: COLORS.textDark,
-    marginBottom: 12,
+  },
+  premiumBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.gold + '20',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  premiumText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.gold,
+  },
+  premiumCard: {
+    marginHorizontal: 20,
+    marginBottom: 16,
+    padding: 16,
+  },
+  premiumContent: {
+    flexDirection: 'row',
+    marginBottom: 16,
+  },
+  premiumIcon: {
+    marginRight: 16,
+  },
+  premiumTextContainer: {
+    flex: 1,
+  },
+  premiumTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: COLORS.textDark,
+    marginBottom: 4,
+  },
+  premiumDescription: {
+    fontSize: 14,
+    color: COLORS.textLight,
+    lineHeight: 20,
+  },
+  premiumButton: {
+    width: '100%',
   },
   startDescription: {
     fontSize: 16,

@@ -496,12 +496,13 @@ export default function GlowUpPlanScreen() {
   const streakDays = getStreakDays();
 
   return (
-    <ScrollView 
-      style={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
-    >
+    <RouteGuard requireAuth requirePremium>
+      <ScrollView 
+        style={styles.container}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
       <Stack.Screen 
         options={{ 
           title: '30-Day Glow-Up Plan',
@@ -759,7 +760,8 @@ export default function GlowUpPlanScreen() {
           style={styles.actionButton}
         />
       </View>
-    </ScrollView>
+      </ScrollView>
+    </RouteGuard>
   );
 }
 

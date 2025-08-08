@@ -1,14 +1,20 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, FlatList } from 'react-native';
 import { Stack } from 'expo-router';
-import { Heart, MessageCircle, Share2, Lock } from 'lucide-react-native';
+import { Heart, MessageCircle, Share2, Lock, Crown } from 'lucide-react-native';
 
 import Button from '@/components/Button';
 import Card from '@/components/Card';
+import PremiumModal from '@/components/PremiumModal';
+import { useAuth } from '@/hooks/auth-store';
+import { usePremiumAccess } from '@/hooks/subscription-store';
 import { COLORS } from '@/constants/colors';
 
 export default function CommunityScreen() {
   const [activeTab, setActiveTab] = useState('trending');
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const { isPremium } = useAuth();
+  const { hasPremiumAccess } = usePremiumAccess();
 
   // Mock data for community posts
   const posts = [
@@ -50,6 +56,15 @@ export default function CommunityScreen() {
     },
   ];
 
+  const handleInteraction = (action: string) => {
+    if (!hasPremiumAccess) {
+      setShowPremiumModal(true);
+      return;
+    }
+    // Handle the actual interaction
+    console.log(`${action} interaction`);
+  };
+
   const renderPost = ({ item }: { item: typeof posts[0] }) => (
     <Card style={styles.postCard}>
       <View style={styles.postHeader}>
@@ -63,22 +78,34 @@ export default function CommunityScreen() {
       <Image source={{ uri: item.image }} style={styles.postImage} />
       
       <View style={styles.postActions}>
-        <TouchableOpacity style={styles.actionButton}>
+        <TouchableOpacity 
+          style={styles.actionButton}
+          onPress={() => handleInteraction('like')}
+        >
           <Heart size={24} color={COLORS.textLight} />
           <Text style={styles.actionCount}>{item.likes}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton}>
+        <TouchableOpacity 
+          style={styles.actionButton}
+          onPress={() => handleInteraction('comment')}
+        >
           <MessageCircle size={24} color={COLORS.textLight} />
           <Text style={styles.actionCount}>{item.comments}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton}>
+        <TouchableOpacity 
+          style={styles.actionButton}
+          onPress={() => handleInteraction('share')}
+        >
           <Share2 size={24} color={COLORS.textLight} />
         </TouchableOpacity>
       </View>
       
       <Text style={styles.postCaption}>{item.caption}</Text>
       
-      <TouchableOpacity style={styles.viewCommentsButton}>
+      <TouchableOpacity 
+        style={styles.viewCommentsButton}
+        onPress={() => handleInteraction('view comments')}
+      >
         <Text style={styles.viewCommentsText}>
           View all {item.comments} comments
         </Text>
@@ -142,31 +169,58 @@ export default function CommunityScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.postsList}
         ListHeaderComponent={
-          <Card style={styles.premiumCard}>
-            <View style={styles.premiumContent}>
-              <Lock size={24} color={COLORS.accent} style={styles.premiumIcon} />
-              <View style={styles.premiumTextContainer}>
-                <Text style={styles.premiumTitle}>Unlock Community Features</Text>
-                <Text style={styles.premiumDescription}>
-                  Upgrade to premium to post, comment, and interact with the community.
-                </Text>
+          !hasPremiumAccess ? (
+            <Card style={styles.premiumCard}>
+              <View style={styles.premiumContent}>
+                <Lock size={24} color={COLORS.accent} style={styles.premiumIcon} />
+                <View style={styles.premiumTextContainer}>
+                  <Text style={styles.premiumTitle}>Unlock Community Features</Text>
+                  <Text style={styles.premiumDescription}>
+                    Upgrade to premium to post, comment, and interact with the community.
+                  </Text>
+                </View>
               </View>
-            </View>
-            <Button
-              title="Upgrade to Premium"
-              variant="secondary"
-              style={styles.premiumButton}
-              onPress={() => console.log('Upgrade to Premium pressed')}
-            />
-          </Card>
+              <Button
+                title="Upgrade to Premium"
+                variant="secondary"
+                style={styles.premiumButton}
+                leftIcon={<Crown size={18} color={COLORS.primary} />}
+                onPress={() => setShowPremiumModal(true)}
+              />
+            </Card>
+          ) : (
+            <Card style={styles.welcomeCard}>
+              <View style={styles.welcomeContent}>
+                <Crown size={24} color={COLORS.gold} style={styles.welcomeIcon} />
+                <View style={styles.welcomeTextContainer}>
+                  <Text style={styles.welcomeTitle}>Welcome, Premium Member!</Text>
+                  <Text style={styles.welcomeDescription}>
+                    Share your glow journey, connect with others, and inspire the community.
+                  </Text>
+                </View>
+              </View>
+            </Card>
+          )
         }
       />
 
       <View style={styles.floatingButtonContainer}>
-        <TouchableOpacity style={styles.floatingButton}>
+        <TouchableOpacity 
+          style={styles.floatingButton}
+          onPress={() => handleInteraction('create post')}
+        >
           <Text style={styles.floatingButtonText}>+</Text>
         </TouchableOpacity>
       </View>
+
+      <PremiumModal
+        visible={showPremiumModal}
+        onClose={() => setShowPremiumModal(false)}
+        onSuccess={() => {
+          setShowPremiumModal(false);
+          console.log('Premium upgrade successful!');
+        }}
+      />
     </View>
   );
 }
@@ -231,6 +285,34 @@ const styles = StyleSheet.create({
   },
   premiumButton: {
     width: '100%',
+  },
+  welcomeCard: {
+    marginBottom: 16,
+    padding: 16,
+    backgroundColor: COLORS.gold + '10',
+    borderColor: COLORS.gold + '30',
+    borderWidth: 1,
+  },
+  welcomeContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  welcomeIcon: {
+    marginRight: 16,
+  },
+  welcomeTextContainer: {
+    flex: 1,
+  },
+  welcomeTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: COLORS.textDark,
+    marginBottom: 4,
+  },
+  welcomeDescription: {
+    fontSize: 14,
+    color: COLORS.textLight,
+    lineHeight: 20,
   },
   postCard: {
     marginBottom: 16,
