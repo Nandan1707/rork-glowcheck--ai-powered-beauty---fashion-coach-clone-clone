@@ -7,7 +7,7 @@ import { useAuth } from '@/hooks/auth-store';
 import Button from '@/components/Button';
 import Input from '@/components/Input';
 import { COLORS } from '@/constants/colors';
-import { signInWithGoogle } from '@/lib/supabase';
+import { signInWithGoogle } from '@/lib/auth-service';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');

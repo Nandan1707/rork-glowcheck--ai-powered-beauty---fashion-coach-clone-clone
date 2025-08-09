@@ -167,7 +167,7 @@ export default function RegisterScreen() {
               variant="outline"
               onPress={async () => {
                 try {
-                  const { signInWithGoogle } = await import('@/lib/supabase');
+                  const { signInWithGoogle } = await import('@/lib/auth-service');
                   const { data, error } = await signInWithGoogle();
                   if (error) {
                     console.error('Google sign up error:', error);

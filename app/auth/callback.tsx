@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
-import { supabase } from '@/lib/supabase';
+import { getSession } from '@/lib/auth-service';
 import { COLORS } from '@/constants/colors';
 
 export default function AuthCallbackScreen() {
@@ -9,7 +9,7 @@ export default function AuthCallbackScreen() {
     const handleAuthCallback = async () => {
       try {
         // Handle the OAuth callback
-        const { data, error } = await supabase.auth.getSession();
+        const { data, error } = await getSession();
         
         if (error) {
           console.error('Auth callback error:', error);

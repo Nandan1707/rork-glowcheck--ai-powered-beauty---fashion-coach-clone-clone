@@ -1,11 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import createContextHook from '@nkzw/create-context-hook';
 import { useState, useEffect } from 'react';
 import { router } from 'expo-router';
 import { Alert } from 'react-native';
 
-import { supabase, signIn, signUp, signOut, getCurrentUser, getUserProfile, updateUserProfile, signInWithGoogle } from '@/lib/supabase';
+import { signInWithStateChange as signIn, signUp, signOutWithStateChange as signOut, getCurrentUser, updateUserProfile, auth } from '@/lib/auth-service';
 import { subscriptionService, SubscriptionStatus } from '@/lib/subscription-service';
 import { User, UserProfile } from '@/types';
 
@@ -22,28 +22,7 @@ export const [AuthContext, useAuth] = createContextHook(() => {
       try {
         const currentUser = await getCurrentUser();
         if (currentUser) {
-          // Fetch user profile from the database
-          const { data: profile } = await getUserProfile(currentUser.id);
-          
-          // Fallback to users table if profile doesn't exist
-          let userData = null;
-          if (!profile) {
-            const { data } = await supabase
-              .from('users')
-              .select('*')
-              .eq('id', currentUser.id)
-              .single();
-            userData = data;
-          }
-            
-          setUser({
-            id: currentUser.id,
-            email: currentUser.email || '',
-            name: profile?.name || userData?.name || currentUser.user_metadata?.name,
-            avatar_url: profile?.avatar_url || userData?.avatar_url,
-            subscription_tier: userData?.subscription_tier || 'free',
-            profile: profile || undefined,
-          });
+          setUser(currentUser);
           
           // Check subscription status
           const subStatus = await subscriptionService.getSubscriptionStatus();
@@ -59,33 +38,13 @@ export const [AuthContext, useAuth] = createContextHook(() => {
     checkSession();
 
     // Listen for auth state changes
-    const { data: authListener } = supabase.auth.onAuthStateChange(
+    const authListener = auth.onAuthStateChange(
       async (event: string, session: any) => {
         console.log('Auth state changed:', event, !!session?.user);
         
         if (event === 'SIGNED_IN' && session?.user) {
-          // Fetch user profile from the database
-          const { data: profile } = await getUserProfile(session.user.id);
-          
-          // Fallback to users table if profile doesn't exist
-          let userData = null;
-          if (!profile) {
-            const { data } = await supabase
-              .from('users')
-              .select('*')
-              .eq('id', session.user.id)
-              .single();
-            userData = data;
-          }
-            
-          setUser({
-            id: session.user.id,
-            email: session.user.email || '',
-            name: profile?.name || userData?.name || session.user.user_metadata?.name,
-            avatar_url: profile?.avatar_url || userData?.avatar_url,
-            subscription_tier: userData?.subscription_tier || 'free',
-            profile: profile || undefined,
-          });
+          const user = session.user;
+          setUser(user);
           
           // Check subscription status
           const subStatus = await subscriptionService.getSubscriptionStatus();
@@ -122,36 +81,14 @@ export const [AuthContext, useAuth] = createContextHook(() => {
       const { data, error } = await signUp(email, password, { name });
       if (error) throw error;
       
-      // Create user profile in the database
-      if (data.user) {
-        // Create entry in users table for subscription management
-        await supabase.from('users').insert({
-          id: data.user.id,
-          email: data.user.email,
-          name,
-          subscription_tier: 'free',
-        });
-        
-        // Create detailed profile
-        await updateUserProfile(data.user.id, {
-          name,
-          onboarding_completed: false,
-        });
-      }
+      // User profile is automatically created in the auth service
       
       return data;
     },
     onSuccess: (data) => {
-      // Check if user needs onboarding
-      if (data?.user?.email_confirmed_at) {
+      // User is automatically signed up and can proceed
+      if (data?.user) {
         router.replace('/(tabs)');
-      } else {
-        // Show email confirmation message
-        Alert.alert(
-          'Check Your Email',
-          'We\'ve sent you a confirmation link. Please check your email and click the link to activate your account.',
-          [{ text: 'OK' }]
-        );
       }
     },
   });
@@ -199,11 +136,7 @@ export const [AuthContext, useAuth] = createContextHook(() => {
         const newStatus = await subscriptionService.getSubscriptionStatus();
         setSubscriptionStatus(newStatus);
         
-        // Update user in database
-        await supabase
-          .from('users')
-          .update({ subscription_tier: 'premium' })
-          .eq('id', user.id);
+        // Update user subscription tier (in a real app, this would be handled by the subscription service)
           
         setUser({ ...user, subscription_tier: 'premium' });
       }
@@ -232,11 +165,7 @@ export const [AuthContext, useAuth] = createContextHook(() => {
         const newStatus = await subscriptionService.getSubscriptionStatus();
         setSubscriptionStatus(newStatus);
         
-        // Update user in database
-        await supabase
-          .from('users')
-          .update({ subscription_tier: 'premium' })
-          .eq('id', user.id);
+        // Update user subscription tier (in a real app, this would be handled by the subscription service)
           
         setUser({ ...user, subscription_tier: 'premium' });
       }

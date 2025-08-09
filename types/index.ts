@@ -1,7 +1,7 @@
 export interface User {
   id: string;
   email: string;
-  name?: string;
+  name: string;
   avatar_url?: string;
   subscription_tier: 'free' | 'premium';
   profile?: UserProfile;
@@ -11,9 +11,9 @@ export interface UserProfile {
   id: string;
   name?: string;
   avatar_url?: string;
-  skin_type?: 'oily' | 'dry' | 'combination' | 'sensitive' | 'normal';
+  skin_type?: string;
   goals?: string[];
-  onboarding_completed: boolean;
+  onboarding_completed?: boolean;
   last_scan_date?: string;
   created_at: string;
   updated_at: string;

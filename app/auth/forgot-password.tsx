@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, KeyboardAv
 import { Link, router } from 'expo-router';
 import { Mail, ArrowLeft } from 'lucide-react-native';
 
-import { resetPassword } from '@/lib/supabase';
+import { resetPassword } from '@/lib/auth-service';
 import Button from '@/components/Button';
 import Input from '@/components/Input';
 import { COLORS } from '@/constants/colors';
