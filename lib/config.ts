@@ -11,7 +11,7 @@ export const CONFIG = {
   // AI Service Configuration
   AI: {
     OPENAI_API_KEY: Constants.expoConfig?.extra?.openaiApiKey || process.env.EXPO_PUBLIC_OPENAI_API_KEY || '',
-    GOOGLE_VISION_API_KEY: Constants.expoConfig?.extra?.googleVisionApiKey || process.env.EXPO_PUBLIC_GOOGLE_VISION_API_KEY || '',
+    GOOGLE_VISION_API_KEY: Constants.expoConfig?.extra?.googleVisionApiKey || process.env.EXPO_PUBLIC_GOOGLE_VISION_API_KEY || 'AIzaSyAAZUBDMKdt6ECQBdZfhNaZwGIQOtPBjA4',
     RORK_AI_BASE_URL: 'https://toolkit.rork.com',
   },
   
@@ -99,6 +99,15 @@ export const validateConfig = () => {
   
   return errors.length === 0;
 };
+
+// Debug configuration loading
+console.log('CONFIG DEBUG:', {
+  hasGoogleVisionKey: !!CONFIG.AI.GOOGLE_VISION_API_KEY,
+  googleVisionKeyLength: CONFIG.AI.GOOGLE_VISION_API_KEY?.length || 0,
+  googleVisionKeyStart: CONFIG.AI.GOOGLE_VISION_API_KEY?.substring(0, 10) || 'none',
+  processEnvKey: process.env.EXPO_PUBLIC_GOOGLE_VISION_API_KEY?.substring(0, 10) || 'none',
+  constantsKey: Constants.expoConfig?.extra?.googleVisionApiKey?.substring(0, 10) || 'none'
+});
 
 // Initialize configuration validation
 validateConfig();

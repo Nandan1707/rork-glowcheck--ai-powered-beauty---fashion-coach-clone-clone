@@ -187,7 +187,14 @@ class AIService {
       // Convert image to base64 for Google Vision API
       const base64Image = await this.convertImageToBase64(imageUri);
       
-      if (!CONFIG.AI.GOOGLE_VISION_API_KEY) {
+      const apiKey = CONFIG.AI.GOOGLE_VISION_API_KEY;
+      console.log('Google Vision API Key check:', {
+        hasKey: !!apiKey,
+        keyLength: apiKey?.length || 0,
+        keyStart: apiKey?.substring(0, 10) || 'none'
+      });
+      
+      if (!apiKey) {
         throw new Error('Google Vision API key not configured');
       }
       
