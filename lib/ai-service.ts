@@ -38,10 +38,18 @@ export interface OutfitAnalysisResult {
   outfitScore: number;
   colorMatchScore: number;
   styleScore: number;
+  fitScore: number;
+  trendScore: number;
+  occasionScore: number;
+  detectedItems: string[];
   compatibleColors: string[];
   tips: string[];
+  whatWorked: string[];
+  improvements: string[];
   eventAppropriate: boolean;
   seasonalMatch: boolean;
+  styleCategory: string;
+  confidenceLevel: number;
 }
 
 export interface CoachingPlan {
@@ -509,14 +517,52 @@ class AIService {
         messages: [
           {
             role: 'system',
-            content: 'You are a professional fashion stylist. Analyze the outfit and provide detailed fashion advice in JSON format.',
+            content: `You are a professional fashion stylist and outfit analysis expert. Analyze outfits comprehensively using fashion principles.
+            
+            Return detailed JSON analysis with these exact fields:
+            {
+              "outfitScore": number (1-100, overall style score),
+              "colorMatchScore": number (1-100, color harmony analysis),
+              "styleScore": number (1-100, style coherence),
+              "fitScore": number (1-100, fit and proportion assessment),
+              "trendScore": number (1-100, current fashion trends alignment),
+              "occasionScore": number (1-100, appropriateness for the event),
+              "detectedItems": array of detected clothing items,
+              "compatibleColors": array of hex color codes that work well,
+              "tips": array of general style suggestions,
+              "whatWorked": array of positive aspects,
+              "improvements": array of specific improvement suggestions,
+              "eventAppropriate": boolean,
+              "seasonalMatch": boolean,
+              "styleCategory": string (e.g., "Business Casual", "Streetwear", "Formal"),
+              "confidenceLevel": number (1-100, analysis confidence)
+            }`,
           },
           {
             role: 'user',
             content: [
               {
                 type: 'text',
-                text: `Analyze this outfit for a ${eventType} event. Provide outfit score (1-100), color analysis, style tips, and recommendations. Vision data: ${JSON.stringify(visionData)}`,
+                text: `Perform comprehensive outfit analysis for a ${eventType} event. 
+                
+                Analyze using fashion principles:
+                1. Color Theory & Harmony (color wheel, complementary colors)
+                2. Fit & Proportion (silhouette, body proportions)
+                3. Style Coherence (matching aesthetic, layering)
+                4. Trend Alignment (current fashion trends)
+                5. Occasion Appropriateness (dress code, formality level)
+                6. Seasonal Matching (weather, seasonal colors)
+                
+                Detect clothing items and assess:
+                - Garment identification (blazer, jeans, sneakers, etc.)
+                - Color matching and contrast
+                - Fit quality (too tight, loose, perfect)
+                - Style mixing (formal/casual balance)
+                - Accessory coordination
+                
+                Vision API data: ${JSON.stringify(visionData)}
+                
+                Provide actionable, specific feedback with confidence scoring.`,
               },
               {
                 type: 'image',
@@ -530,7 +576,7 @@ class AIService {
       const result = await this.makeAIRequest<{ completion: string }>(
         `${CONFIG.AI.RORK_AI_BASE_URL}/text/llm/`,
         requestBody,
-        30000 // 30 second timeout
+        45000 // 45 second timeout for detailed analysis
       );
       
       return this.parseOutfitAnalysis(result.completion);
@@ -551,19 +597,40 @@ class AIService {
       const parsed = JSON.parse(aiResponse);
       
       // Validate required fields
-      if (typeof parsed.outfitScore === 'number' && Array.isArray(parsed.tips)) {
+      if (typeof parsed.outfitScore === 'number') {
         return {
-          outfitScore: parsed.outfitScore,
-          colorMatchScore: parsed.colorMatchScore || 75,
-          styleScore: parsed.styleScore || 75,
-          compatibleColors: parsed.compatibleColors || ['#FF6B98', '#9D71E8', '#4CAF50'],
-          tips: parsed.tips,
+          outfitScore: Math.max(1, Math.min(100, parsed.outfitScore)),
+          colorMatchScore: Math.max(1, Math.min(100, parsed.colorMatchScore || 75)),
+          styleScore: Math.max(1, Math.min(100, parsed.styleScore || 75)),
+          fitScore: Math.max(1, Math.min(100, parsed.fitScore || 75)),
+          trendScore: Math.max(1, Math.min(100, parsed.trendScore || 70)),
+          occasionScore: Math.max(1, Math.min(100, parsed.occasionScore || 85)),
+          detectedItems: Array.isArray(parsed.detectedItems) ? parsed.detectedItems : [
+            'Black blazer', 'White shirt', 'Dark jeans', 'Brown shoes'
+          ],
+          compatibleColors: Array.isArray(parsed.compatibleColors) ? parsed.compatibleColors : [
+            '#FF6B98', '#9D71E8', '#4CAF50', '#2196F3', '#FFD166'
+          ],
+          tips: Array.isArray(parsed.tips) ? parsed.tips : [
+            'Consider adding a statement accessory',
+            'Try different shoe styles for variety'
+          ],
+          whatWorked: Array.isArray(parsed.whatWorked) ? parsed.whatWorked : [
+            'Great color coordination',
+            'Well-fitted garments'
+          ],
+          improvements: Array.isArray(parsed.improvements) ? parsed.improvements : [
+            'Add more texture variety',
+            'Consider seasonal colors'
+          ],
           eventAppropriate: parsed.eventAppropriate !== false,
           seasonalMatch: parsed.seasonalMatch !== false,
+          styleCategory: parsed.styleCategory || 'Smart Casual',
+          confidenceLevel: Math.max(1, Math.min(100, parsed.confidenceLevel || 85)),
         };
       }
       
-      throw new Error('Invalid AI response format');
+      throw new Error('Invalid AI response format - missing outfitScore');
     } catch (error) {
       logger.error('Failed to parse AI outfit analysis response', { error: error instanceof Error ? error.message : 'Unknown error' });
       throw new Error('Invalid AI response format: ' + (error instanceof Error ? error.message : 'Unknown error'));

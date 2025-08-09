@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, ActivityIndicator, Platform, Alert } from 'react-native';
 import { CameraView, CameraType } from 'expo-camera';
-import { Camera, RefreshCw, Shirt, Crown, Lock } from 'lucide-react-native';
+import { Camera, RefreshCw, Shirt, Crown, Lock, Upload, CheckCircle, XCircle, Palette, Sparkles, TrendingUp, Calendar } from 'lucide-react-native';
 import { Stack } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -34,11 +34,14 @@ export default function OutfitAnalysisScreen() {
 
 
   const eventTypes = [
-    'Date Night',
-    'Job Interview',
-    'Casual Outing',
-    'Formal Event',
-    'Workout',
+    { id: 'date-night', label: 'Date Night', icon: '💕' },
+    { id: 'job-interview', label: 'Job Interview', icon: '💼' },
+    { id: 'casual-outing', label: 'Casual Outing', icon: '☀️' },
+    { id: 'formal-event', label: 'Formal Event', icon: '🎩' },
+    { id: 'business-meeting', label: 'Business Meeting', icon: '📊' },
+    { id: 'party', label: 'Party/Social', icon: '🎉' },
+    { id: 'workout', label: 'Workout/Active', icon: '💪' },
+    { id: 'travel', label: 'Travel/Vacation', icon: '✈️' },
   ];
 
   const takePicture = async () => {
@@ -97,31 +100,16 @@ export default function OutfitAnalysisScreen() {
     setAnalyzing(true);
     
     try {
-      const result = await aiService.analyzeOutfit(capturedImage, eventType);
+      const selectedEvent = eventTypes.find(e => e.id === eventType);
+      const result = await aiService.analyzeOutfit(capturedImage, selectedEvent?.label || eventType);
       setAnalysisResult(result);
     } catch (error) {
       console.error('Error analyzing outfit:', error);
-      // Fallback to mock data if AI service fails
-      const mockResult: OutfitAnalysisResult = {
-        outfitScore: Math.floor(Math.random() * 30) + 70,
-        colorMatchScore: Math.floor(Math.random() * 30) + 70,
-        styleScore: Math.floor(Math.random() * 30) + 70,
-        compatibleColors: [
-          '#FF6B98', // Pink
-          '#9D71E8', // Purple
-          '#4CAF50', // Green
-          '#2196F3', // Blue
-          '#FFD166', // Gold
-        ],
-        tips: [
-          'Try adding a statement accessory to elevate this look.',
-          'This color palette works well with your skin tone.',
-          'Consider a different shoe style for better proportion.',
-        ],
-        eventAppropriate: true,
-        seasonalMatch: true,
-      };
-      setAnalysisResult(mockResult);
+      Alert.alert(
+        'Analysis Failed',
+        'Unable to analyze your outfit right now. Please try again later.',
+        [{ text: 'OK' }]
+      );
     } finally {
       setAnalyzing(false);
     }
@@ -286,20 +274,21 @@ export default function OutfitAnalysisScreen() {
               <View style={styles.eventTypeContainer}>
                 {eventTypes.map((type) => (
                   <TouchableOpacity
-                    key={type}
+                    key={type.id}
                     style={[
                       styles.eventTypeButton,
-                      eventType === type && styles.eventTypeButtonSelected,
+                      eventType === type.id && styles.eventTypeButtonSelected,
                     ]}
-                    onPress={() => setEventType(type)}
+                    onPress={() => setEventType(type.id)}
                   >
+                    <Text style={styles.eventTypeEmoji}>{type.icon}</Text>
                     <Text
                       style={[
                         styles.eventTypeButtonText,
-                        eventType === type && styles.eventTypeButtonTextSelected,
+                        eventType === type.id && styles.eventTypeButtonTextSelected,
                       ]}
                     >
-                      {type}
+                      {type.label}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -339,11 +328,18 @@ export default function OutfitAnalysisScreen() {
               style={styles.resultImage}
             />
             <View style={styles.resultInfo}>
-              <Text style={styles.eventTypeResult}>{eventType}</Text>
+              <Text style={styles.eventTypeResult}>
+                {eventTypes.find(e => e.id === eventType)?.label || eventType}
+              </Text>
               <View style={styles.scoreContainer}>
-                <Text style={styles.scoreLabel}>Outfit Score</Text>
-                <View style={[styles.scoreCircle, { backgroundColor: COLORS.secondary }]}>
+                <Text style={styles.scoreLabel}>Style Score</Text>
+                <View style={[
+                  styles.scoreCircle, 
+                  { backgroundColor: analysisResult.outfitScore >= 80 ? COLORS.success : 
+                                   analysisResult.outfitScore >= 60 ? COLORS.warning : COLORS.error }
+                ]}>
                   <Text style={styles.scoreValue}>{analysisResult.outfitScore}</Text>
+                  <Text style={styles.scoreOutOf}>/100</Text>
                 </View>
               </View>
             </View>
@@ -612,21 +608,29 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   eventTypeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingVertical: 12,
+    borderRadius: 25,
     borderWidth: 1,
     borderColor: COLORS.border,
     marginRight: 8,
     marginBottom: 8,
+    backgroundColor: COLORS.white,
   },
   eventTypeButtonSelected: {
     backgroundColor: COLORS.secondary,
     borderColor: COLORS.secondary,
   },
+  eventTypeEmoji: {
+    fontSize: 16,
+    marginRight: 6,
+  },
   eventTypeButtonText: {
     color: COLORS.textDark,
     fontSize: 14,
+    fontWeight: '500',
   },
   eventTypeButtonTextSelected: {
     color: COLORS.white,
@@ -780,5 +784,207 @@ const styles = StyleSheet.create({
   actionButton: {
     flex: 1,
     marginHorizontal: 5,
+  },
+  
+  // Validation styles
+  validationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 12,
+    gap: 8,
+  },
+  validationText: {
+    fontSize: 14,
+    color: COLORS.textLight,
+  },
+  validationCard: {
+    marginBottom: 16,
+    padding: 16,
+    backgroundColor: COLORS.error + '10',
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.error,
+  },
+  validationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 8,
+  },
+  validationTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.error,
+  },
+  validationIssue: {
+    fontSize: 14,
+    color: COLORS.textDark,
+    marginBottom: 4,
+    lineHeight: 20,
+  },
+  validationNote: {
+    fontSize: 12,
+    color: COLORS.textLight,
+    marginTop: 8,
+    fontStyle: 'italic',
+  },
+  
+  // Camera hints
+  cameraHints: {
+    marginTop: 16,
+    paddingHorizontal: 20,
+  },
+  cameraHint: {
+    color: COLORS.white,
+    fontSize: 14,
+    marginBottom: 4,
+    opacity: 0.8,
+  },
+  
+  // Score circle updates
+  scoreOutOf: {
+    fontSize: 12,
+    color: COLORS.white,
+    opacity: 0.8,
+  },
+  
+  // Detected items
+  detectedItemsCard: {
+    marginBottom: 16,
+    padding: 16,
+  },
+  detectedItemsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 8,
+  },
+  detectedItemsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.textDark,
+  },
+  detectedItemsList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  detectedItem: {
+    backgroundColor: COLORS.secondary + '20',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: COLORS.secondary + '40',
+  },
+  detectedItemText: {
+    fontSize: 14,
+    color: COLORS.secondary,
+    fontWeight: '500',
+  },
+  
+  // Metrics grid
+  metricsGrid: {
+    gap: 16,
+    marginBottom: 20,
+  },
+  metricItem: {
+    marginBottom: 4,
+  },
+  metricHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 8,
+  },
+  metricLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: COLORS.textDark,
+  },
+  
+  // Positive feedback
+  positiveCard: {
+    marginBottom: 16,
+    padding: 16,
+    backgroundColor: COLORS.success + '10',
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.success,
+  },
+  positiveHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 8,
+  },
+  positiveTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.success,
+  },
+  positiveItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  positiveBullet: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+    marginTop: 2,
+  },
+  positiveText: {
+    flex: 1,
+    fontSize: 14,
+    color: COLORS.textDark,
+    lineHeight: 20,
+  },
+  
+  // Improvement feedback
+  improvementCard: {
+    marginBottom: 16,
+    padding: 16,
+    backgroundColor: COLORS.warning + '10',
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.warning,
+  },
+  improvementHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 8,
+  },
+  improvementTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.warning,
+  },
+  improvementItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  improvementBullet: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+    marginTop: 2,
+  },
+  improvementBulletText: {
+    color: COLORS.white,
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  improvementText: {
+    flex: 1,
+    fontSize: 14,
+    color: COLORS.textDark,
+    lineHeight: 20,
   },
 });
