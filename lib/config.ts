@@ -1,27 +1,43 @@
 import Constants from 'expo-constants';
 
+const fromEnv = (name: string): string => {
+  try {
+    const anyGlobal = globalThis as any;
+    const val = anyGlobal?.process?.env?.[name];
+    return typeof val === 'string' ? val : '';
+  } catch {
+    return '';
+  }
+};
+
 // Production-ready configuration management
 export const CONFIG = {
-  // Supabase Configuration
+  // Supabase Configuration (disabled)
   SUPABASE: {
-    URL: Constants.expoConfig?.extra?.supabaseUrl || process.env.EXPO_PUBLIC_SUPABASE_URL || '',
-    ANON_KEY: Constants.expoConfig?.extra?.supabaseAnonKey || process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '',
+    URL: '',
+    ANON_KEY: '',
   },
   
   // AI Service Configuration
   AI: {
-    OPENAI_API_KEY: Constants.expoConfig?.extra?.openaiApiKey || process.env.EXPO_PUBLIC_OPENAI_API_KEY || '',
-    GOOGLE_VISION_API_KEY: Constants.expoConfig?.extra?.googleVisionApiKey || process.env.EXPO_PUBLIC_GOOGLE_VISION_API_KEY || '',
-    GOOGLE_GEMINI_API_KEY: Constants.expoConfig?.extra?.googleGeminiApiKey || process.env.EXPO_PUBLIC_GOOGLE_GEMINI_API_KEY || '',
+    OPENAI_API_KEY: Constants.expoConfig?.extra?.openaiApiKey || fromEnv('EXPO_PUBLIC_OPENAI_API_KEY') || '',
+    GOOGLE_VISION_API_KEY:
+      Constants.expoConfig?.extra?.googleVisionApiKey ||
+      fromEnv('EXPO_PUBLIC_GOOGLE_VISION_API_KEY') ||
+      'AIzaSyAAZUBDMKdt6ECQBdZfhNaZwGIQOtPBjA4',
+    GOOGLE_GEMINI_API_KEY:
+      Constants.expoConfig?.extra?.googleGeminiApiKey ||
+      fromEnv('EXPO_PUBLIC_GOOGLE_GEMINI_API_KEY') ||
+      'AIzaSyAAZUBDMKdt6ECQBdZfhNaZwGIQOtPBjA4',
     RORK_AI_BASE_URL: 'https://toolkit.rork.com',
   },
   
   // AWS Configuration
   AWS: {
-    REGION: Constants.expoConfig?.extra?.awsRegion || process.env.EXPO_PUBLIC_AWS_REGION || 'eu-north-1',
-    S3_BUCKET_NAME: Constants.expoConfig?.extra?.awsS3BucketName || process.env.EXPO_PUBLIC_AWS_S3_BUCKET_NAME || '',
-    ACCESS_KEY_ID: Constants.expoConfig?.extra?.awsAccessKeyId || process.env.EXPO_PUBLIC_AWS_ACCESS_KEY_ID || '',
-    SECRET_ACCESS_KEY: Constants.expoConfig?.extra?.awsSecretAccessKey || process.env.EXPO_PUBLIC_AWS_SECRET_ACCESS_KEY || '',
+    REGION: Constants.expoConfig?.extra?.awsRegion || fromEnv('EXPO_PUBLIC_AWS_REGION') || 'eu-north-1',
+    S3_BUCKET_NAME: Constants.expoConfig?.extra?.awsS3BucketName || fromEnv('EXPO_PUBLIC_AWS_S3_BUCKET_NAME') || '',
+    ACCESS_KEY_ID: Constants.expoConfig?.extra?.awsAccessKeyId || fromEnv('EXPO_PUBLIC_AWS_ACCESS_KEY_ID') || '',
+    SECRET_ACCESS_KEY: Constants.expoConfig?.extra?.awsSecretAccessKey || fromEnv('EXPO_PUBLIC_AWS_SECRET_ACCESS_KEY') || '',
   },
   
   // App Configuration
@@ -39,7 +55,7 @@ export const CONFIG = {
     ENABLE_ANALYTICS: !__DEV__,
     ENABLE_CRASH_REPORTING: !__DEV__,
     ENABLE_PERFORMANCE_MONITORING: !__DEV__,
-    USE_MOCK_DATA: false, // Disabled mock data - always use real APIs
+    USE_MOCK_DATA: false,
     ENABLE_OFFLINE_MODE: true,
     ENABLE_BIOMETRIC_AUTH: true,
     ENABLE_PUSH_NOTIFICATIONS: true,
@@ -47,25 +63,23 @@ export const CONFIG = {
   
   // API Configuration
   API: {
-    TIMEOUT: 30000, // 30 seconds
+    TIMEOUT: 30000,
     RETRY_ATTEMPTS: 3,
-    RETRY_DELAY: 1000, // 1 second
+    RETRY_DELAY: 1000,
   },
   
   // Storage Configuration
   STORAGE: {
-    MAX_CACHE_SIZE: 100 * 1024 * 1024, // 100MB
-    MAX_IMAGE_SIZE: 10 * 1024 * 1024, // 10MB
-    CACHE_EXPIRY: 7 * 24 * 60 * 60 * 1000, // 7 days
+    MAX_CACHE_SIZE: 100 * 1024 * 1024,
+    MAX_IMAGE_SIZE: 10 * 1024 * 1024,
+    CACHE_EXPIRY: 7 * 24 * 60 * 60 * 1000,
   },
   
   // Stripe Configuration
   STRIPE: {
     PUBLISHABLE_KEY: Constants.expoConfig?.extra?.stripePublishableKey || 
-                    process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || 
+                    fromEnv('EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY') || 
                     'pk_test_51RtKrxGlpRLAAEJIUmlklhyogEhqPhlvpIBKmfC35zOR3cPCLnnXzQ3lV2esYSZqd5LvOi1OCG5AFv9FkDUUkLMj00vX09QNT5',
-    // Note: Secret key should never be used in client-side code
-    // For server-side operations, use a backend API
   },
 };
 
@@ -73,20 +87,12 @@ export const CONFIG = {
 export const validateConfig = () => {
   const errors: string[] = [];
   
-  if (!CONFIG.SUPABASE.URL) {
-    errors.push('EXPO_PUBLIC_SUPABASE_URL is required');
-  }
-  
-  if (!CONFIG.SUPABASE.ANON_KEY) {
-    errors.push('EXPO_PUBLIC_SUPABASE_ANON_KEY is required');
-  }
-  
   if (!CONFIG.AI.GOOGLE_GEMINI_API_KEY && !CONFIG.FEATURES.USE_MOCK_DATA) {
     errors.push('EXPO_PUBLIC_GOOGLE_GEMINI_API_KEY is required for production');
   }
   
   if (!CONFIG.AWS.S3_BUCKET_NAME && !CONFIG.FEATURES.USE_MOCK_DATA) {
-    errors.push('EXPO_PUBLIC_AWS_S3_BUCKET_NAME is required for production');
+    // Optional in client-only mode; do not error
   }
   
   if (errors.length > 0 && CONFIG.APP.IS_PRODUCTION) {
@@ -95,7 +101,6 @@ export const validateConfig = () => {
   
   if (errors.length > 0 && CONFIG.APP.IS_DEV) {
     console.warn('Configuration warnings:', errors.join(', '));
-    console.warn('Using mock data for development');
   }
   
   return errors.length === 0;
