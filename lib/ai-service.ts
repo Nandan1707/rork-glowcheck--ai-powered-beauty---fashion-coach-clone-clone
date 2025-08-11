@@ -208,7 +208,14 @@ class AIService {
       );
 
       if (!response.ok) {
-        throw new Error(`Vision API error: ${response.statusText}`);
+        let details = '';
+        try {
+          const errJson = await response.json();
+          details = errJson?.error?.message || JSON.stringify(errJson);
+        } catch {
+          details = response.statusText || 'Unknown error';
+        }
+        throw new Error(`Vision API error: ${response.status} ${details}`);
       }
 
       const json = await response.json();
@@ -220,7 +227,47 @@ class AIService {
         'POST'
       );
       logger.error('Vision API failed', error as Error);
-      throw error;
+
+      try {
+        const fallback = await this.analyzeImageWithGemini(imageUri);
+        const parseHex = (hex: string) => {
+          const clean = (hex || '').replace('#','');
+          const r = parseInt(clean.slice(0,2) || '00', 16);
+          const g = parseInt(clean.slice(2,4) || '00', 16);
+          const b = parseInt(clean.slice(4,6) || '00', 16);
+          return { r, g, b };
+        };
+        const synthetic = {
+          responses: [
+            {
+              faceAnnotations: fallback.facePresent ? [
+                {
+                  detectionConfidence: 0.8,
+                  landmarkingConfidence: 0.6,
+                  rollAngle: 0,
+                  panAngle: 0,
+                  tiltAngle: 0,
+                }
+              ] : [],
+              imagePropertiesAnnotation: {
+                dominantColors: {
+                  colors: (fallback.colors || []).slice(0,5).map((h: string) => ({
+                    color: parseHex(h),
+                    pixelFraction: 0.2,
+                    score: 0.2,
+                  }))
+                }
+              },
+              localizedObjectAnnotations: (fallback.items || []).map((name: string) => ({ name, score: 0.7 }))
+            }
+          ]
+        };
+        logger.warn('Using Gemini fallback for Vision data');
+        return synthetic;
+      } catch (fallbackErr) {
+        logger.error('Gemini fallback failed', fallbackErr as Error);
+        throw error;
+      }
     }
   }
 
