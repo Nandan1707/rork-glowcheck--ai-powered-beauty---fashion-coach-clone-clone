@@ -168,7 +168,7 @@ class AIService {
     });
   }
 
-  private async analyzeImageWithVision(imageUri: string): Promise<any> {
+  async analyzeImageWithVision(imageUri: string): Promise<any> {
     try {
       const base64Image = await this.convertImageToBase64(imageUri);
       
@@ -211,7 +211,8 @@ class AIService {
         throw new Error(`Vision API error: ${response.statusText}`);
       }
 
-      return await response.json();
+      const json = await response.json();
+      return json;
     } catch (error) {
       await errorHandler.reportNetworkError(
         error as Error,
@@ -316,14 +317,15 @@ class AIService {
         return cachedResult;
       }
 
-      const geminiData = await this.analyzeImageWithGemini(imageUri);
-      if (!geminiData.facePresent) {
-        const hint = geminiData.reasons?.[0] || 'Face not detected or obstructed';
-        throw new Error(`No clear human face detected. ${hint}. Please retake the photo with good lighting, remove obstructions, and center your face.`);
+      const vision = await this.analyzeImageWithVision(imageUri);
+      const face = vision?.responses?.[0]?.faceAnnotations?.[0];
+      if (!face) {
+        throw new Error('No face detected. Please retake the photo with good lighting and center your face.');
       }
-      const aiAnalysis = await this.getAIGlowAnalysis(geminiData, imageUri, fingerprint);
-      await storageService.set(cacheKey, aiAnalysis, { expiresIn: 24 * 60 * 60 * 1000 });
-      return aiAnalysis;
+      const imageProps = vision?.responses?.[0]?.imagePropertiesAnnotation?.dominantColors?.colors ?? [];
+      const computed = this.computeGlowFromVision(face, imageProps);
+      await storageService.set(cacheKey, computed, { expiresIn: 24 * 60 * 60 * 1000 });
+      return computed;
     } catch (error) {
       if (error instanceof Error && (error.message.includes('cancelled') || error.message.includes('aborted'))) {
         logger.debug('Glow analysis request was cancelled', { imageUri: imageUri.substring(0, 50) + '...' });
@@ -487,9 +489,12 @@ class AIService {
   async analyzeOutfit(imageUri: string, eventType: string): Promise<OutfitAnalysisResult> {
     try {
       console.log('Starting outfit analysis for:', imageUri, eventType);
-      const geminiData = await this.analyzeImageWithGemini(imageUri);
-      const aiAnalysis = await this.getAIOutfitAnalysis(geminiData, imageUri, eventType);
-      return aiAnalysis;
+      const vision = await this.analyzeImageWithVision(imageUri);
+      const objects = vision?.responses?.[0]?.localizedObjectAnnotations ?? [];
+      if (!objects || objects.length === 0) {
+        throw new Error('No person/outfit detected. Please upload a full or half-body photo with clear lighting.');
+      }
+      return this.computeOutfitFromVision(vision, eventType);
     } catch (error) {
       if (error instanceof Error && (error.message.includes('cancelled') || error.message.includes('aborted'))) {
         logger.debug('Outfit analysis request was cancelled', { imageUri: imageUri.substring(0, 50) + '...', eventType });
@@ -800,6 +805,229 @@ class AIService {
       hydration,
       symmetryScore,
     };
+  }
+  // Public precheck for human presence using Vision API
+  async validateHumanPresence(imageUri: string): Promise<{ personPresent: boolean; facePresent: boolean; reasons: string[] }> {
+    const vision = await this.analyzeImageWithVision(imageUri);
+    const res = vision?.responses?.[0];
+    const face = res?.faceAnnotations?.[0];
+    const objects = res?.localizedObjectAnnotations ?? [];
+    const personObj = objects.find((o: any) => (o?.name || '').toLowerCase().includes('person'));
+    return {
+      personPresent: !!personObj,
+      facePresent: !!face,
+      reasons: !face ? ['No clear human face detected'] : [],
+    };
+  }
+
+  private computeGlowFromVision(face: any, dominantColors: any[]): GlowAnalysisResult {
+    const clamp = (n: number, min = 1, max = 100) => Math.max(min, Math.min(max, Math.round(n)));
+    const roll = Math.abs(Number(face.rollAngle ?? 0));
+    const pan = Math.abs(Number(face.panAngle ?? 0));
+    const tilt = Math.abs(Number(face.tiltAngle ?? 0));
+    const anglePenalty = Math.min(30, roll + pan + tilt);
+    const detection = Number(face.detectionConfidence ?? 0.7);
+    const landmarking = Number(face.landmarkingConfidence ?? 0.6);
+
+    const brightnessRaw = (() => {
+      if (!Array.isArray(dominantColors) || dominantColors.length === 0) return 60;
+      let total = 0;
+      let weight = 0;
+      for (const c of dominantColors) {
+        const color = c?.color;
+        const frac = Number(c?.pixelFraction ?? 0.1);
+        if (color && typeof color.r === 'number' && typeof color.g === 'number' && typeof color.b === 'number') {
+          const lum = 0.2126 * color.r + 0.7152 * color.g + 0.0722 * color.b; // 0-255
+          total += lum * frac;
+          weight += frac;
+        }
+      }
+      const avgLum = weight > 0 ? total / weight : 128;
+      return (avgLum / 255) * 100;
+    })();
+
+    const symmetryBase = 100 - anglePenalty * 2;
+    const jawlineBase = landmarking * 100;
+
+    const brightness = clamp(brightnessRaw);
+    const symmetryScore = clamp(symmetryBase);
+    const jawlineScore = clamp(jawlineBase);
+
+    const hydration = clamp((brightness * 0.6) + (symmetryScore * 0.2) + (detection * 100 * 0.2));
+
+    const overall = clamp(
+      (symmetryScore * 0.25) +
+      (brightness * 0.25) +
+      (jawlineScore * 0.2) +
+      (hydration * 0.2) +
+      (detection * 100 * 0.1)
+    );
+
+    const skinTone = this.inferSkinToneFromColors(dominantColors);
+
+    return {
+      overallScore: overall,
+      skinPotential: overall >= 85 ? 'High' : overall >= 70 ? 'Medium' : 'Low',
+      skinQuality: overall >= 90 ? 'Excellent' : overall >= 80 ? 'Good' : overall >= 70 ? 'Fair' : 'Needs Improvement',
+      jawlineScore,
+      skinTone,
+      skinType: 'Normal',
+      brightness,
+      hydration,
+      symmetryScore,
+      glowScore: overall,
+      improvements: [
+        brightness < 65 ? 'Improve lighting and even skin tone appearance' : 'Maintain consistent skincare routine',
+        symmetryScore < 80 ? 'Face the camera directly to improve symmetry detection' : 'Great symmetry captured',
+      ],
+      recommendations: [
+        'Use a gentle cleanser and hydrating moisturizer',
+        'Apply sunscreen daily (SPF 30+)',
+      ],
+      tips: [
+        'Capture in natural daylight facing a window',
+        'Keep camera at eye level and avoid extreme angles',
+        'Wipe lens to ensure sharp focus',
+      ],
+      aiTips: [
+        'Hydrate and maintain a consistent routine',
+        'Use vitamin C serum to enhance brightness',
+        'Consider gentle facial massage for improved definition',
+      ],
+    };
+  }
+
+  private inferSkinToneFromColors(dominantColors: any[]): string {
+    if (!Array.isArray(dominantColors) || dominantColors.length === 0) return 'Medium';
+    const top = dominantColors[0]?.color;
+    if (!top) return 'Medium';
+    const r = Number(top.r ?? 128);
+    const g = Number(top.g ?? 128);
+    const b = Number(top.b ?? 128);
+    if (r > g + 20 && r > b + 20) return 'Warm Beige';
+    if (b > r + 20) return 'Cool Ivory';
+    if (r > 150 && g > 120 && b < 100) return 'Golden Tan';
+    if (r < 90 && g < 90 && b < 90) return 'Deep Caramel';
+    return 'Olive Medium';
+  }
+
+  private computeOutfitFromVision(vision: any, eventType: string): OutfitAnalysisResult {
+    const res = vision?.responses?.[0];
+    const objects: any[] = res?.localizedObjectAnnotations ?? [];
+    const colorsArr: any[] = res?.imagePropertiesAnnotation?.dominantColors?.colors ?? [];
+
+    const clothingKeywords = ['person', 'shirt', 'dress', 'pants', 'trousers', 'jeans', 'skirt', 'coat', 'jacket', 'blazer', 'shoe', 'sneaker', 'tie', 'hat', 'sleeve', 'shorts'];
+    const detectedItems = Array.from(new Set(
+      objects
+        .map(o => String(o?.name || '').toLowerCase())
+        .filter(name => clothingKeywords.some(k => name.includes(k)))
+        .map(name => name.charAt(0).toUpperCase() + name.slice(1))
+    ));
+
+    const palette = colorsArr.slice(0, 5).map(c => {
+      const color = c?.color || {};
+      const r = Number(color.r ?? 0);
+      const g = Number(color.g ?? 0);
+      const b = Number(color.b ?? 0);
+      const hex = `#${[r, g, b].map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('')}`;
+      return hex.toUpperCase();
+    });
+
+    const colorHarmonyScore = this.computeColorHarmony(palette);
+    const fitScore = Math.max(50, Math.min(95, (objects.length >= 3 ? 80 : 65)));
+    const trendScore = 70;
+    const occasionScore = this.estimateOccasionScore(eventType, detectedItems);
+    const styleScore = Math.round((colorHarmonyScore + fitScore + trendScore) / 3);
+    const outfitScore = Math.round(
+      colorHarmonyScore * 0.25 +
+      fitScore * 0.25 +
+      trendScore * 0.2 +
+      occasionScore * 0.15 +
+      styleScore * 0.15
+    );
+
+    return {
+      outfitScore,
+      colorMatchScore: colorHarmonyScore,
+      styleScore,
+      fitScore,
+      trendScore,
+      occasionScore,
+      detectedItems: detectedItems.length > 0 ? detectedItems : ['Outfit'],
+      compatibleColors: this.suggestCompatibleColors(palette[0]),
+      tips: [
+        'Ensure balanced proportions between top and bottom garments',
+        'Coordinate accessories to complement dominant colors',
+      ],
+      whatWorked: [
+        colorHarmonyScore >= 75 ? 'Strong color harmony' : 'Good base palette',
+      ],
+      improvements: [
+        colorHarmonyScore < 70 ? 'Consider adding contrast or complementary accessory' : 'Experiment with textures to add depth',
+      ],
+      eventAppropriate: occasionScore >= 70,
+      seasonalMatch: true,
+      styleCategory: this.inferStyleCategory(detectedItems),
+      confidenceLevel: 80,
+    };
+  }
+
+  private computeColorHarmony(palette: string[]): number {
+    if (palette.length <= 1) return 65;
+    const toHsv = (hex: string) => {
+      const r = parseInt(hex.slice(1, 3), 16) / 255;
+      const g = parseInt(hex.slice(3, 5), 16) / 255;
+      const b = parseInt(hex.slice(5, 7), 16) / 255;
+      const max = Math.max(r, g, b), min = Math.min(r, g, b);
+      const d = max - min;
+      let h = 0;
+      if (d === 0) h = 0; else if (max === r) h = ((g - b) / d) % 6; else if (max === g) h = (b - r) / d + 2; else h = (r - g) / d + 4;
+      h = Math.round((h * 60 + 360) % 360);
+      const s = max === 0 ? 0 : d / max;
+      const v = max;
+      return { h, s, v };
+    };
+    const hsv = palette.map(toHsv);
+    let spread = 0;
+    for (let i = 0; i < hsv.length; i++) {
+      for (let j = i + 1; j < hsv.length; j++) {
+        const diff = Math.min(Math.abs(hsv[i].h - hsv[j].h), 360 - Math.abs(hsv[i].h - hsv[j].h));
+        spread += diff;
+      }
+    }
+    const pairs = (hsv.length * (hsv.length - 1)) / 2;
+    const avgSpread = pairs > 0 ? spread / pairs : 0;
+    const harmony = 70 + Math.min(30, Math.abs(180 - avgSpread) / 6);
+    return Math.max(50, Math.min(95, Math.round(harmony)));
+  }
+
+  private estimateOccasionScore(eventType: string, items: string[]): number {
+    const e = eventType.toLowerCase();
+    if (e.includes('formal') || e.includes('interview') || e.includes('business')) {
+      const hasBlazer = items.some(i => i.toLowerCase().includes('blazer') || i.toLowerCase().includes('jacket'));
+      return hasBlazer ? 85 : 70;
+    }
+    if (e.includes('party')) return 80;
+    if (e.includes('date')) return 78;
+    if (e.includes('casual') || e.includes('travel')) return 75;
+    if (e.includes('workout')) return 72;
+    return 75;
+  }
+
+  private inferStyleCategory(items: string[]): string {
+    const lower = items.map(i => i.toLowerCase());
+    if (lower.some(i => i.includes('blazer') || i.includes('trousers'))) return 'Business Casual';
+    if (lower.some(i => i.includes('jeans') || i.includes('sneaker'))) return 'Casual';
+    if (lower.some(i => i.includes('dress'))) return 'Formal';
+    return 'Smart Casual';
+  }
+
+  private suggestCompatibleColors(hex?: string): string[] {
+    if (!hex) return ['#2196F3', '#4CAF50', '#FFC107'];
+    const toRgb = (h: string) => [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)] as const;
+    const [r,g,b] = toRgb(hex);
+    const complement = `#${[(255-r),(255-g),(255-b)].map(v=>Math.max(0,Math.min(255,v)).toString(16).padStart(2,'0')).join('')}`.toUpperCase();
+    return [hex.toUpperCase(), complement, '#FFFFFF', '#000000'];
   }
 }
 

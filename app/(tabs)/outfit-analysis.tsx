@@ -99,11 +99,6 @@ export default function OutfitAnalysisScreen() {
     setAnalyzing(true);
     
     try {
-      const precheck: any = await (aiService as any)['analyzeImageWithGemini'](capturedImage);
-      if (!precheck?.facePresent) {
-        const hint = precheck?.reasons?.[0] || 'No person detected or subject is obstructed';
-        throw new Error(`${hint}. Please upload a clear full/half-body photo with good lighting.`);
-      }
       const selectedEvent = eventTypes.find(e => e.id === eventType);
       const result = await aiService.analyzeOutfit(capturedImage, selectedEvent?.label || eventType);
       setAnalysisResult(result);
