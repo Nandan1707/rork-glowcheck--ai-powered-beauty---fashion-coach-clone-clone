@@ -173,7 +173,6 @@ export default function GlowAnalysisScreen() {
       setAnalysisProgress(100);
       setAnalysisStage('Analysis complete!');
       
-      // Small delay to show completion
       await new Promise(resolve => setTimeout(resolve, 500));
       
       setAnalysisResult({
@@ -188,10 +187,10 @@ export default function GlowAnalysisScreen() {
     } catch (error) {
       console.error('Error analyzing image:', error);
       
-      // Show user-friendly error message
+      const msg = error instanceof Error ? error.message : 'Unable to analyze your image. Please check your internet connection and try again.';
       Alert.alert(
         'Analysis Failed',
-        'Unable to analyze your image. Please check your internet connection and try again.',
+        msg,
         [
           { text: 'Try Again', onPress: () => analyzeImage(imageUri) },
           { text: 'Cancel', onPress: resetAnalysis, style: 'cancel' }

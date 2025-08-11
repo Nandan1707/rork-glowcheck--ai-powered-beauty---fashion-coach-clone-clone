@@ -91,7 +91,6 @@ export default function OutfitAnalysisScreen() {
   const analyzeOutfit = async () => {
     if (!capturedImage || !eventType) return;
     
-    // Check premium access for advanced analysis
     if (!hasPremiumAccess) {
       setShowPremiumModal(true);
       return;
@@ -100,6 +99,11 @@ export default function OutfitAnalysisScreen() {
     setAnalyzing(true);
     
     try {
+      const precheck: any = await (aiService as any)['analyzeImageWithGemini'](capturedImage);
+      if (!precheck?.facePresent) {
+        const hint = precheck?.reasons?.[0] || 'No person detected or subject is obstructed';
+        throw new Error(`${hint}. Please upload a clear full/half-body photo with good lighting.`);
+      }
       const selectedEvent = eventTypes.find(e => e.id === eventType);
       const result = await aiService.analyzeOutfit(capturedImage, selectedEvent?.label || eventType);
       setAnalysisResult(result);
@@ -107,7 +111,7 @@ export default function OutfitAnalysisScreen() {
       console.error('Error analyzing outfit:', error);
       Alert.alert(
         'Analysis Failed',
-        'Unable to analyze your outfit right now. Please try again later.',
+        error instanceof Error ? error.message : 'Unable to analyze your outfit right now. Please try again later.',
         [{ text: 'OK' }]
       );
     } finally {

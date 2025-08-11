@@ -84,60 +84,47 @@ class AIService {
   private async makeAIRequest<T>(url: string, body: any, timeout: number = 30000): Promise<T> {
     const cacheKey = this.getCacheKey(url, body);
     
-    // Check if there's already a pending request for the same data
     if (this.requestCache.has(cacheKey)) {
       const cached = this.requestCache.get(cacheKey)!;
       if (!cached.controller.signal.aborted) {
         logger.debug('Using cached AI request', { url });
         return cached.promise;
       } else {
-        // Remove aborted request from cache
         this.requestCache.delete(cacheKey);
       }
     }
     
-    // Create new AbortController for this request
     const controller = new AbortController();
     
-    // Create new request with proper signal handling and error recovery
     const requestPromise = networkService.post<T>(url, body, {
       timeout,
-      retries: 0, // Disable retries to prevent multiple concurrent requests
+      retries: 0,
       retryDelay: 1000,
     }).then(result => {
-      // Clean up cache on success
       this.requestCache.delete(cacheKey);
       return result;
     }).catch(error => {
-      // Clean up cache on error
       this.requestCache.delete(cacheKey);
-      
-      // Handle different types of errors
       if (error instanceof Error) {
         if (error.message.includes('cancelled') || 
             error.message.includes('aborted') || 
             error.name === 'AbortError') {
           logger.debug('AI request was cancelled', { url, error: error.message });
-          throw error; // Re-throw cancellation errors
+          throw error;
         }
-        
         if (error.message.includes('Failed to fetch') || 
             error.message.includes('Network request failed') ||
             error.message.includes('TypeError: Failed to fetch')) {
-          logger.warn('Network error in AI request, will use fallback', { url, error: error.message });
-          // Don't throw network errors, let the calling function handle fallback
+          logger.warn('Network error in AI request', { url, error: error.message });
           throw new Error('NETWORK_ERROR');
         }
       }
-      
       logger.warn('AI request failed', { url, error: error instanceof Error ? error.message : 'Unknown error' });
       throw error;
     });
     
-    // Cache the promise with controller
     this.requestCache.set(cacheKey, { promise: requestPromise, controller });
     
-    // Clean up cache after timeout
     const timeoutId = setTimeout(() => {
       const cached = this.requestCache.get(cacheKey);
       if (cached && !cached.controller.signal.aborted) {
@@ -156,6 +143,7 @@ class AIService {
       throw error;
     }
   }
+
   private async uploadImageToS3(imageUri: string, fileName: string): Promise<string> {
     return performanceMonitor.measure('uploadImageToS3', async () => {
       try {
@@ -166,8 +154,6 @@ class AIService {
           return imageUri;
         }
         
-        // For production, implement proper S3 upload
-        // TODO: Implement actual S3 upload logic
         logger.info('S3 upload completed', { fileName });
         return imageUri;
       } catch (error) {
@@ -184,7 +170,6 @@ class AIService {
 
   private async analyzeImageWithVision(imageUri: string): Promise<any> {
     try {
-      // Convert image to base64 for Google Vision API
       const base64Image = await this.convertImageToBase64(imageUri);
       
       const apiKey = CONFIG.AI.GOOGLE_VISION_API_KEY;
@@ -238,10 +223,58 @@ class AIService {
     }
   }
 
+  private async analyzeImageWithGemini(imageUri: string): Promise<{ facePresent: boolean; facesCount: number; quality: 'good' | 'bad'; reasons: string[]; items: string[]; colors: string[] }> {
+    try {
+      const base64Image = await this.convertImageToBase64(imageUri);
+      const apiKey = CONFIG.AI.GOOGLE_GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error('Google Gemini API key not configured');
+      }
+      const body = {
+        contents: [
+          {
+            parts: [
+              { text: 'You are a strict validator. Analyze this photo and return compact JSON. Goals: 1) Determine if a real human face is clearly present and centered for analysis (not cartoon, not obscured), 2) List visible clothing items on the person, 3) Extract dominant garment colors as hex if possible, 4) Rate image quality for analysis based on lighting, focus, and obstructions.' },
+              { inlineData: { mimeType: 'image/jpeg', data: base64Image } },
+              { text: 'Respond ONLY with JSON having fields: {"facePresent": true|false, "facesCount": number, "quality": "good"|"bad", "reasons": string[], "items": string[], "colors": string[] }' }
+            ]
+          }
+        ]
+      } as const;
+
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        }
+      );
+      if (!res.ok) {
+        throw new Error(`Gemini API error: ${res.status} ${res.statusText}`);
+      }
+      const json = await res.json();
+      const text: string = json?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+      const match = text.match(/\{[\s\S]*\}/);
+      const payload = match ? match[0] : text;
+      const parsed = JSON.parse(payload);
+      return {
+        facePresent: !!parsed.facePresent,
+        facesCount: Number(parsed.facesCount ?? 0),
+        quality: parsed.quality === 'good' ? 'good' : 'bad',
+        reasons: Array.isArray(parsed.reasons) ? parsed.reasons : [],
+        items: Array.isArray(parsed.items) ? parsed.items : [],
+        colors: Array.isArray(parsed.colors) ? parsed.colors : [],
+      };
+    } catch (error) {
+      await errorHandler.reportNetworkError(error as Error, 'https://generativelanguage.googleapis.com', 'POST');
+      logger.error('Gemini image analysis failed', error as Error);
+      throw error;
+    }
+  }
+
   private async convertImageToBase64(imageUri: string): Promise<string> {
     try {
       if (Platform.OS === 'web') {
-        // Web implementation
         const response = await fetch(imageUri);
         const blob = await response.blob();
         return new Promise((resolve, reject) => {
@@ -254,11 +287,9 @@ class AIService {
           reader.readAsDataURL(blob);
         });
       } else {
-        // React Native implementation
         if (!FileSystem) {
           throw new Error('FileSystem not available on this platform');
         }
-        
         return await FileSystem.readAsStringAsync(imageUri, {
           encoding: FileSystem.EncodingType.Base64,
         });
@@ -274,61 +305,45 @@ class AIService {
     }
   }
 
-
-
   async analyzeGlow(imageUri: string): Promise<GlowAnalysisResult> {
     try {
       console.log('Starting glow analysis for:', imageUri);
-      
-      // Generate image fingerprint for consistent results
       const fingerprint = await this.generateImageFingerprint(imageUri);
       const cacheKey = `glow_analysis_${fingerprint}`;
-      
-      // Check if we have cached results for this exact image
       const cachedResult = await storageService.get<GlowAnalysisResult>(cacheKey);
       if (cachedResult) {
         logger.debug('Using cached glow analysis result', { fingerprint });
         return cachedResult;
       }
-      
-      // Analyze with Google Vision API (or use mock data)
-      const visionData = await this.analyzeImageWithVision(imageUri);
-      
-      // Use Rork AI API for detailed analysis with fingerprint for consistency
-      const aiAnalysis = await this.getAIGlowAnalysis(visionData, imageUri, fingerprint);
-      
-      // Cache the result for future use (24 hours)
+
+      const geminiData = await this.analyzeImageWithGemini(imageUri);
+      if (!geminiData.facePresent) {
+        const hint = geminiData.reasons?.[0] || 'Face not detected or obstructed';
+        throw new Error(`No clear human face detected. ${hint}. Please retake the photo with good lighting, remove obstructions, and center your face.`);
+      }
+      const aiAnalysis = await this.getAIGlowAnalysis(geminiData, imageUri, fingerprint);
       await storageService.set(cacheKey, aiAnalysis, { expiresIn: 24 * 60 * 60 * 1000 });
-      
       return aiAnalysis;
     } catch (error) {
-      // Check if error is due to request cancellation
       if (error instanceof Error && (error.message.includes('cancelled') || error.message.includes('aborted'))) {
         logger.debug('Glow analysis request was cancelled', { imageUri: imageUri.substring(0, 50) + '...' });
-        throw error; // Re-throw cancellation errors
+        throw error;
       }
-      
       await errorHandler.reportError(
         error as Error,
         'glow-analysis',
         'analyzeGlow',
         { imageUri: imageUri.substring(0, 50) + '...' }
       );
-      logger.warn('Glow analysis failed, using consistent mock data', error as Error);
-      
-      // Re-throw the error instead of using mock data
+      logger.warn('Glow analysis failed', error as Error);
       throw error;
     }
   }
 
   private async getAIGlowAnalysis(visionData: any, imageUri: string, fingerprint: string): Promise<GlowAnalysisResult> {
     try {
-      // Convert image to base64 for AI API
       const base64Image = await this.convertImageToBase64(imageUri);
-      
-      // Generate consistent baseline scores for this image
       const consistentAnalysis = this.generateConsistentAnalysis(fingerprint);
-      
       const requestBody = {
         messages: [
           {
@@ -381,7 +396,7 @@ class AIService {
                 9. Facial symmetry analysis (around ${consistentAnalysis.symmetryScore})
                 10. Personalized AI beauty tips
                 
-                Vision API data: ${JSON.stringify(visionData)}
+                Pre-analysis data: ${JSON.stringify(visionData)}
                 
                 Provide detailed, actionable insights and recommendations. For the SAME image, stay within ±3 points of baseline. For DIFFERENT images, prioritize accurate analysis over baseline consistency.`,
               },
@@ -397,7 +412,7 @@ class AIService {
       const result = await this.makeAIRequest<{ completion: string }>(
         `${CONFIG.AI.RORK_AI_BASE_URL}/text/llm/`,
         requestBody,
-        45000 // 45 second timeout for detailed analysis
+        45000
       );
       
       return this.parseGlowAnalysis(result.completion, consistentAnalysis);
@@ -414,22 +429,15 @@ class AIService {
 
   private parseGlowAnalysis(aiResponse: string, consistentAnalysis?: Partial<GlowAnalysisResult>): GlowAnalysisResult {
     try {
-      // Try to parse JSON response from AI
       const parsed = JSON.parse(aiResponse);
-      
-      // Validate and constrain scores to ensure consistency for same image
       const constrainScore = (score: number, baseline: number, variance: number = 8): number => {
         if (typeof score !== 'number' || isNaN(score)) return baseline;
-        // Allow more variance for different images, less for same image
         const actualVariance = consistentAnalysis ? Math.min(variance, 3) : variance;
         return Math.max(1, Math.min(100, Math.round(Math.max(baseline - actualVariance, Math.min(baseline + actualVariance, score)))));
       };
-      
-      // Validate required fields for new comprehensive format
       if (typeof parsed.overallScore === 'number' && 
           typeof parsed.skinTone === 'string' &&
           Array.isArray(parsed.aiTips)) {
-        
         const result: GlowAnalysisResult = {
           overallScore: consistentAnalysis ? constrainScore(parsed.overallScore, consistentAnalysis.overallScore!) : parsed.overallScore,
           skinPotential: parsed.skinPotential || consistentAnalysis?.skinPotential || 'Medium',
@@ -440,18 +448,15 @@ class AIService {
           brightness: consistentAnalysis ? constrainScore(parsed.brightness || 75, consistentAnalysis.brightness!) : (parsed.brightness || 75),
           hydration: consistentAnalysis ? constrainScore(parsed.hydration || 70, consistentAnalysis.hydration!) : (parsed.hydration || 70),
           symmetryScore: consistentAnalysis ? constrainScore(parsed.symmetryScore || 85, consistentAnalysis.symmetryScore!) : (parsed.symmetryScore || 85),
-          glowScore: 0, // Will be set below
+          glowScore: 0,
           improvements: parsed.improvements || [],
           recommendations: parsed.recommendations || [],
-          tips: parsed.aiTips, // Use AI tips as primary tips
+          tips: parsed.aiTips,
           aiTips: parsed.aiTips,
         };
-        
-        result.glowScore = result.overallScore; // Map for backward compatibility
+        result.glowScore = result.overallScore;
         return result;
       }
-      
-      // Fallback to old format if new format not available
       if (typeof parsed.glowScore === 'number') {
         const result: GlowAnalysisResult = {
           overallScore: consistentAnalysis ? constrainScore(parsed.glowScore, consistentAnalysis.overallScore!) : parsed.glowScore,
@@ -463,17 +468,15 @@ class AIService {
           brightness: consistentAnalysis ? constrainScore(parsed.brightness || 75, consistentAnalysis.brightness!) : (parsed.brightness || 75),
           hydration: consistentAnalysis ? constrainScore(parsed.hydration || 70, consistentAnalysis.hydration!) : (parsed.hydration || 70),
           symmetryScore: consistentAnalysis ? constrainScore(parsed.symmetry || 85, consistentAnalysis.symmetryScore!) : (parsed.symmetry || 85),
-          glowScore: 0, // Will be set below
+          glowScore: 0,
           improvements: parsed.improvements || [],
           recommendations: parsed.recommendations || [],
           tips: parsed.tips || parsed.improvements || [],
           aiTips: parsed.tips || parsed.improvements || [],
         };
-        
         result.glowScore = result.overallScore;
         return result;
       }
-      
       throw new Error('Invalid AI response format');
     } catch (error) {
       logger.error('Failed to parse AI glow analysis response', { error: error instanceof Error ? error.message : 'Unknown error' });
@@ -481,29 +484,17 @@ class AIService {
     }
   }
 
-
-
   async analyzeOutfit(imageUri: string, eventType: string): Promise<OutfitAnalysisResult> {
     try {
       console.log('Starting outfit analysis for:', imageUri, eventType);
-      
-      // Skip S3 upload for now to reduce complexity
-      // const s3Url = await this.uploadImageToS3(imageUri, `outfit-${Date.now()}.jpg`);
-      
-      // Analyze with Google Vision API (or use mock data)
-      const visionData = await this.analyzeImageWithVision(imageUri);
-      
-      // Use Rork AI API for detailed analysis
-      const aiAnalysis = await this.getAIOutfitAnalysis(visionData, imageUri, eventType);
-      
+      const geminiData = await this.analyzeImageWithGemini(imageUri);
+      const aiAnalysis = await this.getAIOutfitAnalysis(geminiData, imageUri, eventType);
       return aiAnalysis;
     } catch (error) {
-      // Check if error is due to request cancellation
       if (error instanceof Error && (error.message.includes('cancelled') || error.message.includes('aborted'))) {
         logger.debug('Outfit analysis request was cancelled', { imageUri: imageUri.substring(0, 50) + '...', eventType });
-        throw error; // Re-throw cancellation errors
+        throw error;
       }
-      
       await errorHandler.reportError(
         error as Error,
         'outfit-analysis',
@@ -517,9 +508,7 @@ class AIService {
 
   private async getAIOutfitAnalysis(visionData: any, imageUri: string, eventType: string): Promise<OutfitAnalysisResult> {
     try {
-      // Convert image to base64 for AI API
       const base64Image = await this.convertImageToBase64(imageUri);
-      
       const requestBody = {
         messages: [
           {
@@ -567,7 +556,7 @@ class AIService {
                 - Style mixing (formal/casual balance)
                 - Accessory coordination
                 
-                Vision API data: ${JSON.stringify(visionData)}
+                Pre-analysis data: ${JSON.stringify(visionData)}
                 
                 Provide actionable, specific feedback with confidence scoring.`,
               },
@@ -583,7 +572,7 @@ class AIService {
       const result = await this.makeAIRequest<{ completion: string }>(
         `${CONFIG.AI.RORK_AI_BASE_URL}/text/llm/`,
         requestBody,
-        45000 // 45 second timeout for detailed analysis
+        45000
       );
       
       return this.parseOutfitAnalysis(result.completion);
@@ -600,10 +589,7 @@ class AIService {
 
   private parseOutfitAnalysis(aiResponse: string): OutfitAnalysisResult {
     try {
-      // Try to parse JSON response from AI
       const parsed = JSON.parse(aiResponse);
-      
-      // Validate required fields
       if (typeof parsed.outfitScore === 'number') {
         return {
           outfitScore: Math.max(1, Math.min(100, parsed.outfitScore)),
@@ -636,15 +622,12 @@ class AIService {
           confidenceLevel: Math.max(1, Math.min(100, parsed.confidenceLevel || 85)),
         };
       }
-      
       throw new Error('Invalid AI response format - missing outfitScore');
     } catch (error) {
       logger.error('Failed to parse AI outfit analysis response', { error: error instanceof Error ? error.message : 'Unknown error' });
       throw new Error('Invalid AI response format: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
   }
-
-
 
   async generateCoachingPlan(goal: string, currentGlowScore: number): Promise<CoachingPlan> {
     try {
@@ -664,7 +647,7 @@ class AIService {
       const result = await this.makeAIRequest<{ completion: string }>(
         `${CONFIG.AI.RORK_AI_BASE_URL}/text/llm/`,
         requestBody,
-        30000 // 30 second timeout
+        30000
       );
       
       return this.parseCoachingPlan(result.completion, goal);
@@ -682,8 +665,6 @@ class AIService {
   private parseCoachingPlan(aiResponse: string, goal: string): CoachingPlan {
     try {
       const parsed = JSON.parse(aiResponse);
-      
-      // Validate required fields
       if (Array.isArray(parsed.dailyTasks) && Array.isArray(parsed.tips)) {
         return {
           id: `plan-${Date.now()}`,
@@ -694,7 +675,6 @@ class AIService {
           expectedResults: parsed.expectedResults || [],
         };
       }
-      
       throw new Error('Invalid AI response format');
     } catch (error) {
       logger.error('Failed to parse AI coaching plan response', { error: error instanceof Error ? error.message : 'Unknown error' });
@@ -702,15 +682,13 @@ class AIService {
     }
   }
 
-
-
   async generateImage(prompt: string, size: string = '1024x1024'): Promise<{ image: { base64Data: string; mimeType: string }; size: string }> {
     try {
       return await networkService.post(`${CONFIG.AI.RORK_AI_BASE_URL}/images/generate/`, {
         prompt,
         size,
       }, {
-        timeout: 60000, // 60 seconds for image generation
+        timeout: 60000,
         retries: 1,
       });
     } catch (error) {
@@ -726,15 +704,11 @@ class AIService {
   async transcribeAudio(audioFile: File | { uri: string; name: string; type: string }, language?: string): Promise<{ text: string; language: string }> {
     try {
       const formData = new FormData();
-      
       if ('uri' in audioFile) {
-        // React Native format
         formData.append('audio', audioFile as any);
       } else {
-        // Web format
         formData.append('audio', audioFile);
       }
-      
       if (language) {
         formData.append('language', language);
       }
@@ -762,25 +736,20 @@ class AIService {
     for (let i = 0; i < str.length; i++) {
       const char = str.charCodeAt(i);
       hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32-bit integer
+      hash = hash & hash;
     }
     return Math.abs(hash).toString(36);
   }
 
   private async generateImageFingerprint(imageUri: string): Promise<string> {
     try {
-      // Create a fingerprint based on image content
       const base64Image = await this.convertImageToBase64(imageUri);
-      
-      // Sample key points from the base64 data for fingerprinting
       const sampleSize = Math.min(1000, base64Image.length);
       const step = Math.floor(base64Image.length / sampleSize);
       let fingerprint = '';
-      
       for (let i = 0; i < base64Image.length; i += step) {
         fingerprint += base64Image.charAt(i);
       }
-      
       return this.hashString(fingerprint);
     } catch (error) {
       logger.warn('Failed to generate image fingerprint, using URI hash', error as Error);
@@ -789,27 +758,20 @@ class AIService {
   }
 
   private generateConsistentScore(fingerprint: string, baseRange: [number, number] = [70, 95]): number {
-    // Use fingerprint to generate consistent but realistic scores with better distribution
     const hash = this.hashString(fingerprint);
     let numericHash = 0;
-    
     for (let i = 0; i < hash.length; i++) {
-      numericHash += hash.charCodeAt(i) * (i + 1); // Weight by position for better distribution
+      numericHash += hash.charCodeAt(i) * (i + 1);
     }
-    
     const [min, max] = baseRange;
     const range = max - min;
-    
-    // Use sine function for more natural distribution (bell curve-like)
     const normalizedHash = (numericHash % 1000) / 1000;
     const bellCurve = Math.sin(normalizedHash * Math.PI);
     const score = min + (bellCurve * range);
-    
     return Math.round(score);
   }
 
   private generateConsistentAnalysis(fingerprint: string): Partial<GlowAnalysisResult> {
-    // Generate consistent analysis based on image fingerprint
     const skinTones = ['Warm Beige', 'Cool Ivory', 'Olive Medium', 'Deep Caramel', 'Golden Tan', 'Porcelain Fair'];
     const skinTypes = ['Normal', 'Dry', 'Oily', 'Combination', 'Sensitive'];
     const potentials = ['High', 'Medium', 'Low'];
@@ -821,7 +783,6 @@ class AIService {
       seed += hash.charCodeAt(i);
     }
     
-    // Use seed to make consistent selections
     const overallScore = this.generateConsistentScore(fingerprint, [75, 95]);
     const jawlineScore = this.generateConsistentScore(fingerprint + 'jaw', [70, 90]);
     const brightness = this.generateConsistentScore(fingerprint + 'bright', [65, 90]);
