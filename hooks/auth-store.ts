@@ -180,18 +180,7 @@ export const [AuthContext, useAuth] = createContextHook(() => {
   };
   
   const upgradeToPremium = async () => {
-    const result = await startFreeTrial();
-    
-    if (result.success) {
-      const remainingDays = await subscriptionService.getRemainingTrialDays();
-      Alert.alert(
-        'Free Trial Started! 🎉',
-        `Welcome to Premium! You have ${remainingDays} days of free access to all premium features.`,
-        [{ text: 'Get Started', style: 'default' }]
-      );
-    } else {
-      Alert.alert('Error', result.error || 'Failed to start free trial. Please try again.');
-    }
+    Alert.alert('Demo Mode', 'Premium is unlocked for demo.');
   };
   
   const updateProfile = async (updates: Partial<UserProfile>): Promise<{ success: boolean; error?: string }> => {
@@ -226,33 +215,15 @@ export const [AuthContext, useAuth] = createContextHook(() => {
     return !user?.profile?.onboarding_completed;
   };
   
-  const checkPremiumAccess = (feature: string, allowDemo: boolean = false): boolean => {
-    if (!user) return false;
-    
-    // Check if user has active subscription
-    if (subscriptionStatus.isActive) return true;
-    
-    // Allow demo access for coaching plans to test functionality
-    if (allowDemo && feature === 'Personalized Coaching Plans') {
-      Alert.alert(
-        'Demo Mode',
-        'You\'re using the demo version of this premium feature. Upgrade to Premium for unlimited access and advanced AI features.',
-        [
-          { text: 'Continue Demo', style: 'default' },
-          { text: 'Start Free Trial', onPress: upgradeToPremium },
-        ]
-      );
-      return true; // Allow demo access
-    }
-    
-    return false; // Don't show alert here, let the calling component handle it
+  const checkPremiumAccess = (_feature: string, _allowDemo: boolean = false): boolean => {
+    return true;
   };
 
   return {
     user,
     isLoading,
     isAuthenticated: !!user,
-    isPremium: subscriptionStatus.isActive || user?.subscription_tier === 'premium',
+    isPremium: true,
     subscriptionStatus,
     subscriptionLoading,
     login: loginMutation.mutate,

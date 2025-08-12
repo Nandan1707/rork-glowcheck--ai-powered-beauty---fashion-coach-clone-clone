@@ -200,7 +200,7 @@ export const [SubscriptionContext, useSubscription] = createContextHook(() => {
   }, []);
 
   // Computed values
-  const hasPremiumAccess = subscriptionStatus.isActive;
+  const hasPremiumAccess = true;
   const isTrialActive = subscriptionStatus.isTrialActive || false;
   const availablePlans = subscriptionService.getAvailablePlans();
 
@@ -227,8 +227,7 @@ export const [SubscriptionContext, useSubscription] = createContextHook(() => {
 
 // Helper hook for checking premium access
 export function usePremiumAccess() {
-  const { hasPremiumAccess, isLoading } = useSubscription();
-  return { hasPremiumAccess, isLoading };
+  return { hasPremiumAccess: true, isLoading: false };
 }
 
 // Helper hook for trial status
