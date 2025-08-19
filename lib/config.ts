@@ -24,11 +24,11 @@ export const CONFIG = {
     GOOGLE_VISION_API_KEY:
       Constants.expoConfig?.extra?.googleVisionApiKey ||
       fromEnv('EXPO_PUBLIC_GOOGLE_VISION_API_KEY') ||
-      'AIzaSyAiCDTn31Ru6Q5HPg3nGruTNGZqwXBnLWY',
+      'AIzaSyBkJnjHv-ZREiwOmHjX9Umc2erPMy47wS4',
     GOOGLE_GEMINI_API_KEY:
       Constants.expoConfig?.extra?.googleGeminiApiKey ||
       fromEnv('EXPO_PUBLIC_GOOGLE_GEMINI_API_KEY') ||
-      'AIzaSyAiCDTn31Ru6Q5HPg3nGruTNGZqwXBnLWY',
+      'AIzaSyBkJnjHv-ZREiwOmHjX9Umc2erPMy47wS4',
     RORK_AI_BASE_URL: 'https://toolkit.rork.com',
   },
   
