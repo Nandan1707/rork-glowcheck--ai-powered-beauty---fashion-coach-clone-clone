@@ -269,9 +269,14 @@ class NetworkService {
   // Health check endpoint
   async healthCheck(): Promise<boolean> {
     try {
-      await this.get(`${CONFIG.AI.RORK_AI_BASE_URL}/health`, { timeout: 5000, retries: 1 });
-      return true;
-    } catch {
+      // Simple health check - just try to reach the base URL
+      const response = await fetch(`${CONFIG.AI.RORK_AI_BASE_URL}/text/llm/`, {
+        method: 'HEAD',
+        signal: AbortSignal.timeout(3000), // 3 second timeout
+      });
+      return response.status < 500; // Accept any non-server error status
+    } catch (error) {
+      logger.debug('Health check failed', { error: error instanceof Error ? error.message : 'Unknown error' });
       return false;
     }
   }

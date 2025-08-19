@@ -82,8 +82,8 @@ class AIService {
         
         const result = await networkService.post<T>(url, body, {
           timeout,
-          retries: 2,
-          retryDelay: 3000,
+          retries: 1, // Reduce retries to avoid long waits
+          retryDelay: 2000,
         });
         
         logger.debug('AI request successful', { url });
@@ -93,17 +93,21 @@ class AIService {
           // Handle specific error types more gracefully
           if (error.message.includes('cancelled') || 
               error.message.includes('aborted') || 
-              error.name === 'AbortError') {
+              error.name === 'AbortError' ||
+              (error as any).code === 'ABORTED') {
             logger.debug('AI request was cancelled', { url, error: error.message });
-            throw new Error('Request was cancelled by user');
+            throw new Error('Request was cancelled');
           }
           if (error.message.includes('Failed to fetch') || 
               error.message.includes('Network request failed') ||
-              error.message.includes('TypeError: Failed to fetch')) {
+              error.message.includes('TypeError: Failed to fetch') ||
+              error.message.includes('Network connection failed')) {
             logger.warn('Network error in AI request', { url, error: error.message });
             throw new Error('Network connection failed. Please check your internet connection and try again.');
           }
-          if (error.message.includes('timeout') || error.message.includes('TIMEOUT')) {
+          if (error.message.includes('timeout') || 
+              error.message.includes('TIMEOUT') ||
+              (error as any).code === 'TIMEOUT') {
             logger.warn('AI request timeout', { url, timeout });
             throw new Error('Request timed out. The AI service may be busy, please try again.');
           }
@@ -659,6 +663,13 @@ class AIService {
     try {
       logger.info('Starting coaching plan generation', { goal, currentGlowScore });
       
+      // First check if we can reach the AI service
+      const isHealthy = await networkService.healthCheck();
+      if (!isHealthy) {
+        logger.warn('AI service health check failed');
+        throw new Error('AI service is currently unavailable. Please try again in a moment.');
+      }
+      
       const requestBody = {
         messages: [
           {
@@ -702,7 +713,7 @@ class AIService {
       const result = await this.makeAIRequest<{ completion: string }>(
         `${CONFIG.AI.RORK_AI_BASE_URL}/text/llm/`,
         requestBody,
-        60000
+        45000 // Reduced timeout
       );
       
       logger.info('Coaching plan generation successful');
@@ -710,17 +721,26 @@ class AIService {
     } catch (error) {
       // Enhanced error handling for coaching plan generation
       if (error instanceof Error) {
-        if (error.message.includes('cancelled') || error.message.includes('aborted')) {
+        if (error.message.includes('cancelled') || 
+            error.message.includes('aborted') ||
+            error.message.includes('Request was cancelled')) {
           logger.debug('Coaching plan generation was cancelled by user');
           throw new Error('Plan generation was cancelled');
         }
-        if (error.message.includes('timeout')) {
+        if (error.message.includes('timeout') || 
+            error.message.includes('timed out')) {
           logger.warn('Coaching plan generation timed out');
           throw new Error('Plan generation is taking longer than expected. Please try again.');
         }
-        if (error.message.includes('Network connection failed')) {
+        if (error.message.includes('Network connection failed') ||
+            error.message.includes('internet connection')) {
           logger.warn('Network error during coaching plan generation');
           throw new Error('Unable to connect to AI service. Please check your internet connection and try again.');
+        }
+        if (error.message.includes('unavailable') ||
+            error.message.includes('temporarily busy')) {
+          logger.warn('AI service unavailable');
+          throw new Error('AI service is temporarily busy. Please try again in a moment.');
         }
       }
       
@@ -730,7 +750,9 @@ class AIService {
         'POST'
       );
       logger.error('Coaching plan generation failed', error as Error);
-      throw new Error('Failed to generate coaching plan. Please try again.');
+      
+      // Return a more user-friendly error message
+      throw new Error('Unable to generate your coaching plan right now. Please try again.');
     }
   }
 

@@ -88,18 +88,16 @@ export default function CoachingScreen() {
           } catch (error) {
             console.error('Error generating coaching plan:', error);
             
-            let errorMessage = 'Failed to generate coaching plan. Please try again.';
-            if (error instanceof Error) {
-              if (error.message.includes('cancelled')) {
-                errorMessage = 'Plan generation was cancelled.';
-              } else if (error.message.includes('timeout')) {
-                errorMessage = 'Plan generation timed out. Please try again.';
-              } else if (error.message.includes('Network connection failed')) {
-                errorMessage = 'Unable to connect. Please check your internet connection.';
-              }
+            // For auto-generation, just silently fall back to manual selection
+            // Don't show error alerts for auto-generation failures
+            if (error instanceof Error && error.message.includes('cancelled')) {
+              // User cancelled, just return to goal selection
+              setShowGoalSelection(true);
+            } else {
+              // Other errors, show goal selection with pre-selected goal
+              setShowGoalSelection(true);
+              console.warn('Auto-generation failed, falling back to manual selection:', error);
             }
-            
-            Alert.alert('Error', errorMessage);
           } finally {
             setLoading(false);
           }
@@ -148,31 +146,42 @@ export default function CoachingScreen() {
     } catch (error) {
       console.error('Error generating coaching plan:', error);
       
-      let errorTitle = 'Error Creating Plan';
-      let errorMessage = 'Failed to generate coaching plan. Please try again.';
+      let errorTitle = 'Unable to Create Plan';
+      let errorMessage = 'We\'re having trouble creating your plan right now. Please try again.';
+      let showRetry = true;
       
       if (error instanceof Error) {
-        if (error.message.includes('cancelled')) {
-          errorTitle = 'Plan Generation Cancelled';
-          errorMessage = 'Plan generation was cancelled. You can try again when ready.';
+        if (error.message.includes('cancelled') || error.message.includes('Plan generation was cancelled')) {
+          // Don't show an error for user cancellations
+          setLoading(false);
+          return;
         } else if (error.message.includes('timeout') || error.message.includes('taking longer')) {
           errorTitle = 'Request Timed Out';
           errorMessage = 'Plan generation is taking longer than expected. Please check your connection and try again.';
-        } else if (error.message.includes('Network connection failed') || error.message.includes('internet connection')) {
+        } else if (error.message.includes('Network connection failed') || 
+                   error.message.includes('internet connection') ||
+                   error.message.includes('check your internet')) {
           errorTitle = 'Connection Error';
           errorMessage = 'Unable to connect to our servers. Please check your internet connection and try again.';
-        } else if (error.message.includes('temporarily unavailable')) {
+        } else if (error.message.includes('unavailable') || 
+                   error.message.includes('temporarily busy') ||
+                   error.message.includes('service is currently unavailable')) {
           errorTitle = 'Service Unavailable';
           errorMessage = 'Our AI service is temporarily busy. Please try again in a moment.';
+        } else if (error.message.includes('Unable to generate your coaching plan')) {
+          errorTitle = 'Service Temporarily Unavailable';
+          errorMessage = 'Our coaching service is experiencing high demand. Please try again in a few minutes.';
         }
       }
       
       Alert.alert(
         errorTitle,
         errorMessage,
-        [
+        showRetry ? [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Retry', onPress: () => generatePlan(goal, glowScore) }
+          { text: 'Try Again', onPress: () => generatePlan(goal, glowScore) }
+        ] : [
+          { text: 'OK', style: 'default' }
         ]
       );
     } finally {
