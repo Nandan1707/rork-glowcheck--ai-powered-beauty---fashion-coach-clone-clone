@@ -38,7 +38,7 @@ class NetworkService {
     if (status >= 500) return true; // Server errors are retryable
     if (status === 408 || status === 429) return true; // Timeout and rate limit
     if (code === 'NETWORK_ERROR' || code === 'TIMEOUT') return true;
-    if (code === 'ABORTED') return false; // Don't retry external aborts
+    if (code === 'ABORTED') return false; // Don't retry user cancellations
     return false;
   }
 
@@ -159,20 +159,22 @@ class NetworkService {
             errorCode = 'TIMEOUT';
             errorMessage = `Request timeout after ${timeout}ms`;
             shouldRetry = attempt < retries;
+            logger.warn('Request timed out', { url, timeout, attempt });
           } else if (wasExternalAbort) {
             errorCode = 'ABORTED';
             errorMessage = 'Request was cancelled by user';
             shouldRetry = false;
+            logger.debug('Request cancelled by user', { url, attempt });
           } else {
             errorCode = 'ABORTED';
             errorMessage = 'Request was cancelled';
             shouldRetry = false;
+            logger.debug('Request was cancelled (unknown reason)', { url, attempt });
           }
           
           const networkError = this.createError(errorMessage, undefined, errorCode);
           
           if (!shouldRetry) {
-            logger.debug('Network request aborted', { url, errorCode, attempt });
             throw networkError;
           }
           

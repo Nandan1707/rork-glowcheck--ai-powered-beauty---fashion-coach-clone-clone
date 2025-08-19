@@ -87,7 +87,19 @@ export default function CoachingScreen() {
             setShowGoalSelection(false);
           } catch (error) {
             console.error('Error generating coaching plan:', error);
-            Alert.alert('Error', 'Failed to generate coaching plan. Please try again.');
+            
+            let errorMessage = 'Failed to generate coaching plan. Please try again.';
+            if (error instanceof Error) {
+              if (error.message.includes('cancelled')) {
+                errorMessage = 'Plan generation was cancelled.';
+              } else if (error.message.includes('timeout')) {
+                errorMessage = 'Plan generation timed out. Please try again.';
+              } else if (error.message.includes('Network connection failed')) {
+                errorMessage = 'Unable to connect. Please check your internet connection.';
+              }
+            }
+            
+            Alert.alert('Error', errorMessage);
           } finally {
             setLoading(false);
           }
@@ -135,9 +147,29 @@ export default function CoachingScreen() {
       );
     } catch (error) {
       console.error('Error generating coaching plan:', error);
+      
+      let errorTitle = 'Error Creating Plan';
+      let errorMessage = 'Failed to generate coaching plan. Please try again.';
+      
+      if (error instanceof Error) {
+        if (error.message.includes('cancelled')) {
+          errorTitle = 'Plan Generation Cancelled';
+          errorMessage = 'Plan generation was cancelled. You can try again when ready.';
+        } else if (error.message.includes('timeout') || error.message.includes('taking longer')) {
+          errorTitle = 'Request Timed Out';
+          errorMessage = 'Plan generation is taking longer than expected. Please check your connection and try again.';
+        } else if (error.message.includes('Network connection failed') || error.message.includes('internet connection')) {
+          errorTitle = 'Connection Error';
+          errorMessage = 'Unable to connect to our servers. Please check your internet connection and try again.';
+        } else if (error.message.includes('temporarily unavailable')) {
+          errorTitle = 'Service Unavailable';
+          errorMessage = 'Our AI service is temporarily busy. Please try again in a moment.';
+        }
+      }
+      
       Alert.alert(
-        'Error Creating Plan',
-        'Failed to generate coaching plan. Please check your connection and try again.',
+        errorTitle,
+        errorMessage,
         [
           { text: 'Cancel', style: 'cancel' },
           { text: 'Retry', onPress: () => generatePlan(goal, glowScore) }
