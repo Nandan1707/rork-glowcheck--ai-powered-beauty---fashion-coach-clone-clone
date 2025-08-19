@@ -74,74 +74,43 @@ export interface DailyTask {
 }
 
 class AIService {
-  private requestCache = new Map<string, { promise: Promise<any>; controller: AbortController }>();
-  private cacheTimeout = 30000; // 30 seconds
-
-  private getCacheKey(url: string, body: any): string {
-    return `${url}:${JSON.stringify(body)}`;
-  }
 
   private async makeAIRequest<T>(url: string, body: any, timeout: number = 30000): Promise<T> {
-    const cacheKey = this.getCacheKey(url, body);
-    
-    if (this.requestCache.has(cacheKey)) {
-      const cached = this.requestCache.get(cacheKey)!;
-      if (!cached.controller.signal.aborted) {
-        logger.debug('Using cached AI request', { url });
-        return cached.promise;
-      } else {
-        this.requestCache.delete(cacheKey);
-      }
-    }
-    
-    const controller = new AbortController();
-    
-    const requestPromise = networkService.post<T>(url, body, {
-      timeout,
-      retries: 0,
-      retryDelay: 1000,
-    }).then(result => {
-      this.requestCache.delete(cacheKey);
-      return result;
-    }).catch(error => {
-      this.requestCache.delete(cacheKey);
-      if (error instanceof Error) {
-        if (error.message.includes('cancelled') || 
-            error.message.includes('aborted') || 
-            error.name === 'AbortError') {
-          logger.debug('AI request was cancelled', { url, error: error.message });
-          throw error;
+    return performanceMonitor.measure('makeAIRequest', async () => {
+      try {
+        logger.debug('Making AI request', { url, timeout });
+        
+        const result = await networkService.post<T>(url, body, {
+          timeout,
+          retries: 1,
+          retryDelay: 2000,
+        });
+        
+        logger.debug('AI request successful', { url });
+        return result;
+      } catch (error) {
+        if (error instanceof Error) {
+          if (error.message.includes('cancelled') || 
+              error.message.includes('aborted') || 
+              error.name === 'AbortError') {
+            logger.debug('AI request was cancelled', { url, error: error.message });
+            throw new Error('Request was cancelled');
+          }
+          if (error.message.includes('Failed to fetch') || 
+              error.message.includes('Network request failed') ||
+              error.message.includes('TypeError: Failed to fetch')) {
+            logger.warn('Network error in AI request', { url, error: error.message });
+            throw new Error('Network connection failed. Please check your internet connection.');
+          }
+          if (error.message.includes('timeout') || error.message.includes('TIMEOUT')) {
+            logger.warn('AI request timeout', { url, timeout });
+            throw new Error('Request timed out. Please try again.');
+          }
         }
-        if (error.message.includes('Failed to fetch') || 
-            error.message.includes('Network request failed') ||
-            error.message.includes('TypeError: Failed to fetch')) {
-          logger.warn('Network error in AI request', { url, error: error.message });
-          throw new Error('NETWORK_ERROR');
-        }
+        logger.error('AI request failed', { url, error: error instanceof Error ? error.message : 'Unknown error' });
+        throw error;
       }
-      logger.warn('AI request failed', { url, error: error instanceof Error ? error.message : 'Unknown error' });
-      throw error;
     });
-    
-    this.requestCache.set(cacheKey, { promise: requestPromise, controller });
-    
-    const timeoutId = setTimeout(() => {
-      const cached = this.requestCache.get(cacheKey);
-      if (cached && !cached.controller.signal.aborted) {
-        logger.debug('Aborting cached AI request due to timeout', { url });
-        cached.controller.abort();
-      }
-      this.requestCache.delete(cacheKey);
-    }, this.cacheTimeout);
-    
-    try {
-      const result = await requestPromise;
-      clearTimeout(timeoutId);
-      return result;
-    } catch (error) {
-      clearTimeout(timeoutId);
-      throw error;
-    }
   }
 
   private async uploadImageToS3(imageUri: string, fileName: string): Promise<string> {
@@ -683,15 +652,44 @@ class AIService {
 
   async generateCoachingPlan(goal: string, currentGlowScore: number): Promise<CoachingPlan> {
     try {
+      logger.info('Starting coaching plan generation', { goal, currentGlowScore });
+      
       const requestBody = {
         messages: [
           {
             role: 'system',
-            content: 'You are a professional beauty coach. Create a personalized 30-day beauty coaching plan in JSON format.',
+            content: `You are a professional beauty coach. Create a personalized 30-day beauty coaching plan in JSON format.
+            
+            Return a JSON object with this exact structure:
+            {
+              "duration": 30,
+              "dailyTasks": [
+                {
+                  "id": "task-1",
+                  "day": 1,
+                  "title": "Task title",
+                  "description": "Task description",
+                  "type": "skincare",
+                  "completed": false
+                }
+              ],
+              "tips": ["tip1", "tip2", "tip3"],
+              "expectedResults": ["result1", "result2", "result3"]
+            }
+            
+            Task types can be: "skincare", "hydration", "sleep", "exercise", "nutrition"
+            Create 3-5 tasks per day for the first 7 days, then 2-3 tasks per day for the remaining days.`,
           },
           {
             role: 'user',
-            content: `Create a 30-day coaching plan for someone with goal: "${goal}" and current glow score: ${currentGlowScore}. Include daily tasks, tips, and expected results.`,
+            content: `Create a comprehensive 30-day coaching plan for someone with the goal: "${goal}" and current glow score: ${currentGlowScore}/100.
+            
+            The plan should be personalized based on their goal and current score. Include:
+            - Daily tasks that progress in difficulty
+            - Practical tips they can follow
+            - Realistic expected results
+            
+            Focus on actionable, achievable tasks that build good habits over 30 days.`,
           },
         ],
       };
@@ -699,9 +697,10 @@ class AIService {
       const result = await this.makeAIRequest<{ completion: string }>(
         `${CONFIG.AI.RORK_AI_BASE_URL}/text/llm/`,
         requestBody,
-        30000
+        45000
       );
       
+      logger.info('Coaching plan generation successful');
       return this.parseCoachingPlan(result.completion, goal);
     } catch (error) {
       await errorHandler.reportNetworkError(
@@ -716,22 +715,120 @@ class AIService {
 
   private parseCoachingPlan(aiResponse: string, goal: string): CoachingPlan {
     try {
-      const parsed = JSON.parse(aiResponse);
-      if (Array.isArray(parsed.dailyTasks) && Array.isArray(parsed.tips)) {
-        return {
-          id: `plan-${Date.now()}`,
-          goal,
-          duration: parsed.duration || 30,
-          dailyTasks: parsed.dailyTasks,
-          tips: parsed.tips,
-          expectedResults: parsed.expectedResults || [],
-        };
+      logger.debug('Parsing coaching plan response', { responseLength: aiResponse.length });
+      
+      // Try to extract JSON from the response
+      let jsonStr = aiResponse.trim();
+      const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        jsonStr = jsonMatch[0];
       }
-      throw new Error('Invalid AI response format');
+      
+      const parsed = JSON.parse(jsonStr);
+      
+      // Validate required fields
+      if (!Array.isArray(parsed.dailyTasks)) {
+        throw new Error('Missing or invalid dailyTasks array');
+      }
+      if (!Array.isArray(parsed.tips)) {
+        throw new Error('Missing or invalid tips array');
+      }
+      
+      // Ensure all daily tasks have required fields
+      const validatedTasks = parsed.dailyTasks.map((task: any, index: number) => ({
+        id: task.id || `task-${index + 1}`,
+        day: Number(task.day) || Math.floor(index / 3) + 1,
+        title: String(task.title || `Task ${index + 1}`),
+        description: String(task.description || 'Complete this task'),
+        type: ['skincare', 'hydration', 'sleep', 'exercise', 'nutrition'].includes(task.type) 
+          ? task.type 
+          : 'skincare',
+        completed: false,
+        reminder: task.reminder || undefined,
+      }));
+      
+      const plan: CoachingPlan = {
+        id: `plan-${Date.now()}`,
+        goal,
+        duration: Number(parsed.duration) || 30,
+        dailyTasks: validatedTasks,
+        tips: Array.isArray(parsed.tips) ? parsed.tips.map(String) : [
+          'Stay consistent with your daily routine',
+          'Track your progress with photos',
+          'Stay hydrated throughout the day'
+        ],
+        expectedResults: Array.isArray(parsed.expectedResults) ? parsed.expectedResults.map(String) : [
+          'Improved skin texture and hydration',
+          'More consistent skincare habits',
+          'Increased confidence in your appearance'
+        ],
+      };
+      
+      logger.info('Successfully parsed coaching plan', { 
+        tasksCount: plan.dailyTasks.length,
+        tipsCount: plan.tips.length,
+        resultsCount: plan.expectedResults.length
+      });
+      
+      return plan;
     } catch (error) {
-      logger.error('Failed to parse AI coaching plan response', { error: error instanceof Error ? error.message : 'Unknown error' });
-      throw new Error('Invalid AI response format: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      logger.error('Failed to parse AI coaching plan response', { 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        responsePreview: aiResponse.substring(0, 200)
+      });
+      
+      // Return a fallback plan instead of throwing
+      const fallbackPlan: CoachingPlan = {
+        id: `plan-${Date.now()}`,
+        goal,
+        duration: 30,
+        dailyTasks: this.generateFallbackTasks(),
+        tips: [
+          'Start with a gentle cleanser and moisturizer',
+          'Drink at least 8 glasses of water daily',
+          'Get 7-8 hours of sleep each night',
+          'Use sunscreen daily (SPF 30+)',
+          'Take progress photos weekly'
+        ],
+        expectedResults: [
+          'Improved skin texture and hydration',
+          'More consistent skincare habits',
+          'Increased confidence in your appearance',
+          'Better understanding of your skin needs'
+        ],
+      };
+      
+      logger.info('Using fallback coaching plan');
+      return fallbackPlan;
     }
+  }
+  
+  private generateFallbackTasks(): DailyTask[] {
+    const tasks: DailyTask[] = [];
+    const taskTemplates = [
+      { title: 'Morning Cleanse', description: 'Gently cleanse your face with a mild cleanser', type: 'skincare' as TaskType },
+      { title: 'Hydrate', description: 'Drink a large glass of water', type: 'hydration' as TaskType },
+      { title: 'Moisturize', description: 'Apply moisturizer to clean skin', type: 'skincare' as TaskType },
+      { title: 'Evening Routine', description: 'Remove makeup and cleanse before bed', type: 'skincare' as TaskType },
+      { title: 'Sleep Schedule', description: 'Aim for 7-8 hours of quality sleep', type: 'sleep' as TaskType },
+    ];
+    
+    for (let day = 1; day <= 30; day++) {
+      const dailyTaskCount = day <= 7 ? 3 : 2;
+      for (let i = 0; i < dailyTaskCount; i++) {
+        const template = taskTemplates[i % taskTemplates.length];
+        tasks.push({
+          id: `task-${day}-${i + 1}`,
+          day,
+          title: template.title,
+          description: template.description,
+          type: template.type,
+          completed: false,
+        });
+      }
+    }
+    
+    return tasks;
   }
 
   async generateImage(prompt: string, size: string = '1024x1024'): Promise<{ image: { base64Data: string; mimeType: string }; size: string }> {
