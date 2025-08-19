@@ -9,7 +9,6 @@ import Button from '@/components/Button';
 import Card from '@/components/Card';
 import ProgressBar from '@/components/ProgressBar';
 import PremiumModal from '@/components/PremiumModal';
-import RouteGuard from '@/components/RouteGuard';
 import { useAuth } from '@/hooks/auth-store';
 import { usePremiumAccess } from '@/hooks/subscription-store';
 import { COLORS } from '@/constants/colors';
@@ -30,6 +29,9 @@ export default function OutfitAnalysisScreen() {
   const cameraRef = useRef<any>(null);
   const { isPremium } = useAuth();
   const { hasPremiumAccess } = usePremiumAccess();
+  
+  // Mock premium access for demo
+  const mockHasPremiumAccess = true;
 
 
 
@@ -91,10 +93,7 @@ export default function OutfitAnalysisScreen() {
   const analyzeOutfit = async () => {
     if (!capturedImage || !eventType) return;
     
-    if (!hasPremiumAccess) {
-      setShowPremiumModal(true);
-      return;
-    }
+    // Premium check removed for demo
     
     setAnalyzing(true);
     
@@ -196,8 +195,7 @@ export default function OutfitAnalysisScreen() {
   }
 
   return (
-    <RouteGuard requireAuth>
-      <ScrollView style={styles.container}>
+    <ScrollView style={styles.container}>
         <Stack.Screen options={{ 
           title: 'Outfit Analysis',
           headerTitleStyle: {
@@ -205,7 +203,7 @@ export default function OutfitAnalysisScreen() {
           },
         }} />
 
-        {!hasPremiumAccess && (
+        {false && (
           <Card style={styles.premiumCard}>
             <View style={styles.premiumContent}>
               <Lock size={24} color={COLORS.accent} style={styles.premiumIcon} />
@@ -234,7 +232,7 @@ export default function OutfitAnalysisScreen() {
             />
             <View style={styles.titleContainer}>
               <Text style={styles.startTitle}>AI Outfit Analysis</Text>
-              {hasPremiumAccess && (
+              {mockHasPremiumAccess && (
                 <View style={styles.premiumBadge}>
                   <Crown size={16} color={COLORS.gold} />
                   <Text style={styles.premiumText}>Premium</Text>
@@ -301,12 +299,11 @@ export default function OutfitAnalysisScreen() {
               ) : (
                 <View style={styles.actionButtons}>
                   <Button
-                    title={hasPremiumAccess ? "Analyze Outfit" : "Upgrade to Analyze"}
+                    title="Analyze Outfit"
                     onPress={analyzeOutfit}
                     disabled={!eventType}
                     style={styles.analyzeButton}
                     variant="secondary"
-                    leftIcon={!hasPremiumAccess ? <Crown size={18} color={COLORS.white} /> : undefined}
                   />
                   <Button
                     title="Change Photo"
@@ -411,7 +408,6 @@ export default function OutfitAnalysisScreen() {
           }}
         />
       </ScrollView>
-    </RouteGuard>
   );
 }
 

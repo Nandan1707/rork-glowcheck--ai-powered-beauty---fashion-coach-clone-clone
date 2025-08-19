@@ -7,7 +7,7 @@ import { Target, CheckCircle, Circle, Calendar, Trophy, Sparkles, Crown } from '
 import Button from '@/components/Button';
 import Card from '@/components/Card';
 import ProgressBar from '@/components/ProgressBar';
-import RouteGuard from '@/components/RouteGuard';
+
 import { COLORS } from '@/constants/colors';
 import { aiService, CoachingPlan, DailyTask } from '@/lib/ai-service';
 import { useAuth } from '@/hooks/auth-store';
@@ -16,6 +16,10 @@ import { useSubscription } from '@/hooks/subscription-store';
 export default function CoachingScreen() {
   const { hasCompletedScan, isPremium } = useAuth();
   const { hasPremiumAccess } = useSubscription();
+  
+  // Mock values for demo
+  const mockHasCompletedScan = true;
+  const mockHasPremiumAccess = true;
   const params = useLocalSearchParams();
   const [currentPlan, setCurrentPlan] = useState<CoachingPlan | null>(null);
   const [loading, setLoading] = useState(false);
@@ -71,7 +75,7 @@ export default function CoachingScreen() {
         }
         
         // Handle auto-generation from glow analysis
-        if (params.autoGenerate === 'true' && params.goal && params.glowScore && hasPremiumAccess) {
+        if (params.autoGenerate === 'true' && params.goal && params.glowScore && mockHasPremiumAccess) {
           setSelectedGoal(params.goal as string);
           const planGoal = params.goal as string;
           const glowScore = parseInt(params.glowScore as string);
@@ -94,7 +98,7 @@ export default function CoachingScreen() {
     };
     
     checkExistingPlan();
-  }, [params, hasPremiumAccess]);
+  }, [params, mockHasPremiumAccess]);
 
   useEffect(() => {
     if (currentPlan) {
@@ -205,7 +209,7 @@ export default function CoachingScreen() {
   );
 
   // Show scan prompt if user hasn't completed scan
-  if (!hasCompletedScan) {
+  if (!mockHasCompletedScan) {
     return (
       <ScrollView style={styles.container}>
         <Stack.Screen options={{ title: 'Beauty Coaching' }} />
@@ -291,8 +295,7 @@ export default function CoachingScreen() {
 
   if (showGoalSelection) {
     return (
-      <RouteGuard requireAuth requirePremium>
-        <ScrollView style={styles.container}>
+      <ScrollView style={styles.container}>
           <Stack.Screen options={{ title: 'Beauty Coaching' }} />
           
           <View style={styles.goalSelectionContainer}>
@@ -300,7 +303,7 @@ export default function CoachingScreen() {
               <View style={styles.titleContainer}>
                 <Sparkles size={32} color={COLORS.primary} />
                 <Text style={styles.title}>Your Beauty Journey</Text>
-                {hasPremiumAccess && (
+                {mockHasPremiumAccess && (
                   <View style={styles.premiumBadge}>
                     <Crown size={16} color={COLORS.gold} />
                     <Text style={styles.premiumText}>Premium</Text>
@@ -351,15 +354,13 @@ export default function CoachingScreen() {
             />
           </View>
         </ScrollView>
-      </RouteGuard>
     );
   }
 
   if (!currentPlan) return null;
 
   return (
-    <RouteGuard requireAuth requirePremium>
-      <ScrollView style={styles.container}>
+    <ScrollView style={styles.container}>
       <Stack.Screen 
         options={{ 
           title: 'My Coaching Plan',
@@ -446,7 +447,6 @@ export default function CoachingScreen() {
         </Card>
       </View>
       </ScrollView>
-    </RouteGuard>
   );
 }
 
