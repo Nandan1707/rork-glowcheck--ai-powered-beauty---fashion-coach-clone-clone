@@ -1,41 +1,41 @@
 export const COLORS = {
-  primary: "#E8A5C8", // Soft pink inspired by screenshots
-  primaryDark: "#D48BB8", // Darker pink
-  secondary: "#C8A5E8", // Soft purple
-  secondaryDark: "#B88BD4", // Darker purple
-  accent: "#FFD4E8", // Light pink accent
-  background: "#F8F4F9", // Very light pink background
-  card: "#FFFFFF", // Pure white cards
-  text: "#2D2D2D",
-  textLight: "#8E8E93",
-  textDark: "#1C1C1E",
-  border: "#F2F2F7",
-  success: "#34C759",
-  error: "#FF3B30",
-  warning: "#FF9500",
-  info: "#007AFF",
-  gold: "#FFD700",
+  primary: "#E1D4C1",
+  primaryDark: "#F4E1D2",
+  secondary: "#D5AA9F",
+  secondaryDark: "#E1D3CC",
+  accent: "#7E102C",
+  accentAlt: "#987284",
+  background: "#F7F2EC",
+  card: "#FFFFFF",
+  text: "#2A1F1B",
+  textLight: "#7A6A62",
+  textDark: "#1A1411",
+  border: "#E8E0D7",
+  success: "#2E7D32",
+  error: "#C62828",
+  warning: "#B26A00",
+  info: "#5C6BC0",
+  gold: "#C8A96A",
   white: "#FFFFFF",
   black: "#000000",
   transparent: "transparent",
   overlay: "rgba(0, 0, 0, 0.4)",
-};
+} as const;
 
 export const GRADIENTS = {
-  primary: ["#E8A5C8", "#F4C2D7"] as const,
-  secondary: ["#C8A5E8", "#D7C2F4"] as const,
-  accent: ["#FFD4E8", "#FFE8F2"] as const,
-  card: ["#FFFFFF", "#F8F4F9"] as const,
-};
+  primary: ["#E1D4C1", "#F4E1D2"] as const,
+  secondary: ["#D5AA9F", "#E1D3CC"] as const,
+  accent: ["#7E102C", "#987284"] as const,
+  card: ["#FFFFFF", "#F7F2EC"] as const,
+} as const;
 
 export default {
   light: {
     text: COLORS.text,
     background: COLORS.background,
-    tint: COLORS.primary,
+    tint: COLORS.accent,
     tabIconDefault: "#ccc",
-    tabIconSelected: COLORS.primary,
+    tabIconSelected: COLORS.accent,
   },
-  // Add all colors for easy access
   ...COLORS,
-};
+} as const;
