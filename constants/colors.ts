@@ -1,16 +1,16 @@
 export const COLORS = {
-  primary: "#E1D4C1",
-  primaryDark: "#F4E1D2",
-  secondary: "#D5AA9F",
-  secondaryDark: "#E1D3CC",
-  accent: "#7E102C",
-  accentAlt: "#987284",
-  background: "#F7F2EC",
+  primary: "#F5E6D3",
+  primaryDark: "#EBD6C4",
+  secondary: "#EBCFC4",
+  secondaryDark: "#E3C3B9",
+  accent: "#6C1E3A",
+  accentAlt: "#8A2D4C",
+  background: "#F5E6D3",
   card: "#FFFFFF",
-  text: "#2A1F1B",
-  textLight: "#7A6A62",
-  textDark: "#1A1411",
-  border: "#E8E0D7",
+  text: "#3A2E2C",
+  textLight: "#6E5E5A",
+  textDark: "#2E2624",
+  border: "#E7D9CF",
   success: "#2E7D32",
   error: "#C62828",
   warning: "#B26A00",
@@ -23,10 +23,10 @@ export const COLORS = {
 } as const;
 
 export const GRADIENTS = {
-  primary: ["#E1D4C1", "#F4E1D2"] as const,
-  secondary: ["#D5AA9F", "#E1D3CC"] as const,
-  accent: ["#7E102C", "#987284"] as const,
-  card: ["#FFFFFF", "#F7F2EC"] as const,
+  primary: ["#F5E6D3", "#EBD6C4"] as const,
+  secondary: ["#EBCFC4", "#E3C3B9"] as const,
+  accent: ["#6C1E3A", "#8A2D4C"] as const,
+  card: ["#FFFFFF", "#F5E6D3"] as const,
 } as const;
 
 export default {
