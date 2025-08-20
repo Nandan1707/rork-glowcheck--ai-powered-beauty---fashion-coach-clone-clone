@@ -55,18 +55,21 @@ export const Button: React.FC<ButtonProps> = ({
 
     switch (variant) {
       case 'primary':
-        return baseStyle;
+        return {
+          ...baseStyle,
+          backgroundColor: COLORS.button,
+        };
       case 'secondary':
         return {
           ...baseStyle,
-          backgroundColor: COLORS.accent,
+          backgroundColor: COLORS.buttonSecondary,
         };
       case 'outline':
         return {
           ...baseStyle,
           backgroundColor: 'transparent',
           borderWidth: 2,
-          borderColor: COLORS.primary,
+          borderColor: COLORS.buttonOutline,
         };
       case 'text':
         return {
@@ -97,19 +100,19 @@ export const Button: React.FC<ButtonProps> = ({
       case 'primary':
         return {
           ...baseStyle,
-          color: COLORS.white,
+          color: COLORS.buttonText,
           fontWeight: '600',
         };
       case 'secondary':
         return {
           ...baseStyle,
-          color: COLORS.white,
+          color: COLORS.buttonTextSecondary,
           fontWeight: '600',
         };
       case 'outline':
         return {
           ...baseStyle,
-          color: COLORS.primary,
+          color: COLORS.buttonTextOutline,
           fontWeight: '600',
         };
       case 'text':
@@ -126,7 +129,7 @@ export const Button: React.FC<ButtonProps> = ({
   const renderContent = () => {
     if (isLoading) {
       return (
-        <ActivityIndicator color={variant === 'outline' || variant === 'text' ? COLORS.primary : COLORS.white} />
+        <ActivityIndicator color={variant === 'outline' || variant === 'text' ? COLORS.primary : COLORS.buttonText} />
       );
     }
     
@@ -214,13 +217,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.button,
     borderRadius: 12,
-    shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 3,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   gradient: {
     borderRadius: 10,
@@ -232,7 +235,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   text: {
-    color: COLORS.white,
+    color: COLORS.buttonText,
     fontWeight: '600',
     textAlign: 'center',
   },

@@ -1,45 +1,75 @@
 export const COLORS = {
-  primary: "#6C1E3A",
-  primaryDark: "#581831",
-  primaryLight: "#8E2F50",
-  secondary: "#F5E6D3",
-  secondaryDark: "#EBCFC4",
-  accent: "#C5A572",
-  accentAlt: "#D8C199",
-  background: "#FAF7F4",
+  // Primary - Sophisticated Mauve (calm yet premium)
+  primary: "#8B5A7C",
+  primaryDark: "#6D4562",
+  primaryLight: "#A06F91",
+  
+  // Secondary - Warm Sage (calming, natural)
+  secondary: "#9CAF88",
+  secondaryDark: "#7A8B6B",
+  secondaryLight: "#B5C8A1",
+  
+  // Accent - Soft Terracotta (warm, inviting)
+  accent: "#C4A484",
+  accentAlt: "#D4B494",
+  
+  // Backgrounds - Clean and airy
+  background: "#FDFCFB",
   surface: "#FFFFFF",
   card: "#FFFFFF",
-  text: "#3A2E2C",
-  textMuted: "#6E5E5A",
-  textDark: "#2E2624",
-  textLight: "#8A7A76",
-  border: "#ECDCD0",
-  divider: "#EFE4DA",
-  success: "#2E7D32",
-  error: "#B32638",
-  warning: "#A5641A",
-  info: "#5C6BC0",
-  gold: "#C5A572",
-  goldSoft: "#D8C199",
+  
+  // Text colors - Readable and elegant
+  text: "#2C2A29",
+  textMuted: "#6B6866",
+  textDark: "#1A1918",
+  textLight: "#8F8C89",
+  
+  // Borders and dividers - Subtle
+  border: "#E8E5E2",
+  divider: "#F0EDEA",
+  
+  // Status colors - Calm versions
+  success: "#6B8E6B",
+  error: "#C47B7B",
+  warning: "#D4A574",
+  info: "#7B9BC4",
+  
+  // Special colors
+  gold: "#C4A484",
+  goldSoft: "#D4B494",
   white: "#FFFFFF",
   black: "#000000",
   transparent: "transparent",
-  overlay: "rgba(0, 0, 0, 0.4)",
-  button: "#6C1E3A",
-  buttonHover: "#7A2544",
-  buttonPressed: "#581831",
-  buttonSecondary: "#C5A572",
-  buttonOutline: "#6C1E3A",
-  chip: "#F0E1DA",
+  overlay: "rgba(44, 42, 41, 0.4)",
+  
+  // Button colors - High contrast and calm
+  button: "#8B5A7C",
+  buttonHover: "#A06F91",
+  buttonPressed: "#6D4562",
+  buttonSecondary: "#9CAF88",
+  buttonSecondaryHover: "#B5C8A1",
+  buttonSecondaryPressed: "#7A8B6B",
+  buttonTertiary: "#C4A484",
+  buttonTertiaryHover: "#D4B494",
+  buttonOutline: "#8B5A7C",
+  buttonText: "#FFFFFF",
+  buttonTextSecondary: "#FFFFFF",
+  buttonTextOutline: "#8B5A7C",
+  
+  // Chip and other UI elements
+  chip: "#F5F2F0",
+  chipActive: "#E8E0DD",
 } as const;
 
 export const GRADIENTS = {
-  primary: ["#6C1E3A", "#8E2F50"] as const,
-  secondary: ["#C5A572", "#D8C199"] as const,
-  accent: ["#F5E6D3", "#EBCFC4"] as const,
-  card: ["#FFFFFF", "#FAF7F4"] as const,
-  goldSheen: ["#F7E7CE", "#D6BE8A"] as const,
-  burgundyGold: ["#6C1E3A", "#C5A572"] as const,
+  primary: ["#8B5A7C", "#A06F91"] as const,
+  secondary: ["#9CAF88", "#B5C8A1"] as const,
+  tertiary: ["#C4A484", "#D4B494"] as const,
+  accent: ["#F5F2F0", "#E8E0DD"] as const,
+  card: ["#FFFFFF", "#FDFCFB"] as const,
+  goldSheen: ["#D4B494", "#C4A484"] as const,
+  calmLuxury: ["#8B5A7C", "#C4A484"] as const,
+  naturalGlow: ["#9CAF88", "#C4A484"] as const,
 } as const;
 
 export default {

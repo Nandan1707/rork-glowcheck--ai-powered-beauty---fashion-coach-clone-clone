@@ -103,11 +103,11 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F5F2F7',
+    backgroundColor: COLORS.background,
   },
   container: {
     flex: 1,
-    backgroundColor: '#F5F2F7',
+    backgroundColor: COLORS.background,
   },
   header: {
     flexDirection: 'row',
@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#E8D5F0',
+    backgroundColor: COLORS.chip,
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
@@ -149,12 +149,12 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: '#FF6B6B',
+    backgroundColor: COLORS.error,
   },
   glowScanCard: {
     marginHorizontal: 16,
     marginBottom: 16,
-    backgroundColor: '#C8A5E8',
+    backgroundColor: COLORS.primary,
     borderRadius: 16,
     padding: 20,
     position: 'relative',
@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 12,
-    backgroundColor: '#FFE8F2',
+    backgroundColor: COLORS.chip,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
