@@ -59,13 +59,13 @@ export const Button: React.FC<ButtonProps> = ({
       case 'secondary':
         return {
           ...baseStyle,
-          backgroundColor: COLORS.secondary,
+          backgroundColor: COLORS.accent,
         };
       case 'outline':
         return {
           ...baseStyle,
           backgroundColor: 'transparent',
-          borderWidth: 1,
+          borderWidth: 2,
           borderColor: COLORS.primary,
         };
       case 'text':
@@ -89,23 +89,34 @@ export const Button: React.FC<ButtonProps> = ({
     if (disabled) {
       return {
         ...baseStyle,
-        color: COLORS.textLight,
+        color: COLORS.textMuted,
       };
     }
 
     switch (variant) {
       case 'primary':
+        return {
+          ...baseStyle,
+          color: COLORS.white,
+          fontWeight: '600',
+        };
       case 'secondary':
-        return baseStyle;
+        return {
+          ...baseStyle,
+          color: COLORS.white,
+          fontWeight: '600',
+        };
       case 'outline':
         return {
           ...baseStyle,
           color: COLORS.primary,
+          fontWeight: '600',
         };
       case 'text':
         return {
           ...baseStyle,
           color: COLORS.primary,
+          fontWeight: '600',
         };
       default:
         return baseStyle;
@@ -204,12 +215,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: COLORS.primary,
-    borderRadius: 10,
+    borderRadius: 12,
     shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 3,
   },
   gradient: {
     borderRadius: 10,
